@@ -237,7 +237,7 @@ def bond_length_distance(molecules, target, bond_types_probabilities):
     cs_generated = torch.cumsum(generated_bond_lengths, dim=1)
     cs_target = torch.cumsum(target_bond_lengths, dim=1)
 
-    w1_per_class = torch.sum(torch.abs(cs_generated - cs_target), dim=1) / 100     # 100 for bin size
+    w1_per_class = torch.sum(torch.abs(cs_generated - cs_target), dim=1) / 100    # 100 because of bin size
     weighted = w1_per_class * bond_types_probabilities[1:]
     return torch.sum(weighted).item(), w1_per_class
 

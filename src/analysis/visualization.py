@@ -5,6 +5,7 @@ from PIL import ImageFont
 from PIL import ImageDraw
 
 import torch
+import numpy as np
 import wandb
 import imageio
 import matplotlib.pyplot as plt
@@ -36,7 +37,8 @@ def visualize(path: str, molecules: list, num_molecules_to_visualize: int, log='
     for i in range(num_molecules_to_visualize):
         mol = molecules[i]
         if log == 'graph':
-            mol.positions = torch.from_numpy(pca.fit_transform(mol.positions)).to(mol.atom_types.device)
+            pos = pca.fit_transform(mol.positions)
+            mol.positions = torch.from_numpy(pos).to(mol.atom_types.device)
         file_path = os.path.join(path, f'{file_prefix}{i}.png')
         plot_save_molecule(molecules[i], save_path=file_path, conformer2d=conformer2d)
         all_file_paths.append(file_path)
@@ -105,10 +107,12 @@ def visualize_chains(path, chain, atom_decoder, num_nodes):
 
         # Transform the positions using PCA to align best to the final molecule
         pca.fit(chain_positions[-1])
-        mols = [Molecule(atom_types=chain_atoms[j], charges=chain_charges[j], bond_types=chain_bonds[j],
-                         positions=torch.from_numpy(pca.transform(chain_positions[j])),
-                         atom_decoder=atom_decoder)
-                for j in range(chain_atoms.shape[0])]
+        mols = []
+        for j in range(chain_atoms.shape[0]):
+            pos = pca.transform(chain_positions[j])
+            mols.append(Molecule(atom_types=chain_atoms[j], charges=chain_charges[j], bond_types=chain_bonds[j],
+                                 positions=torch.from_numpy(pos).to(chain_atoms.device),
+                                 atom_decoder=atom_decoder))
         print("Molecule list generated.")
 
         # Extract the positions of the final 2d molecule
@@ -116,8 +120,8 @@ def visualize_chains(path, chain, atom_decoder, num_nodes):
         AllChem.Compute2DCoords(last_mol)
         coords = []
         conf = last_mol.GetConformer()
-        for i, atom in enumerate(last_mol.GetAtoms()):
-            p = conf.GetAtomPosition(i)
+        for k, atom in enumerate(last_mol.GetAtoms()):
+            p = conf.GetAtomPosition(k)
             coords.append([p.x, p.y, p.z])
         conformer2d = torch.Tensor(coords)
 
@@ -125,18 +129,19 @@ def visualize_chains(path, chain, atom_decoder, num_nodes):
             all_file_paths = visualize(result_path, mols, num_molecules_to_visualize=-1, log=None,
                                        conformer2d=conformer2d, file_prefix='frame')
 
-    print('\nCreating the gif.')
 
-    # Turn the frames into a gif
-    imgs = [imageio.v3.imread(fn) for fn in all_file_paths]
-    gif_path = os.path.join(os.path.dirname(path), f"{path.split('/')[-1]}_3d.gif")
-    imgs.extend([imgs[-1]] * 10)
-    imageio.mimsave(gif_path, imgs, subrectangles=True, fps=5)
 
-    if wandb.run:
-        wandb.log({"chain": wandb.Video(gif_path, fps=5, format="gif")}, commit=True)
-        # trainer.logger.experiment.log({'chain': [wandb.Video(gif_path, caption=gif_path, format="gif")]})
-    print("Chain saved.")
+        # Turn the frames into a gif
+        imgs = [imageio.v3.imread(fn) for fn in all_file_paths]
+        gif_path = os.path.join(os.path.dirname(path), f"{path.split('/')[-1]}_{i}.gif")
+        print(f'Saving the gif at {gif_path}.')
+        imgs.extend([imgs[-1]] * 10)
+        imageio.mimsave(gif_path, imgs, subrectangles=True, fps=5)
+
+        if wandb.run:
+            wandb.log({"chain": wandb.Video(gif_path, fps=5, format="gif")}, commit=True)
+            # trainer.logger.experiment.log({'chain': [wandb.Video(gif_path, caption=gif_path, format="gif")]})
+        print("Chain saved.")
     # draw grid image
     # try:
     #     img = Draw.MolsToGridImage(mols, molsPerRow=10, subImgSize=(200, 200))
@@ -155,7 +160,7 @@ def plot_molecule3d(ax, positions, atom_types, edge_types, alpha, hex_bg_color, 
     max_x_dist = x.max() - x.min()
     max_y_dist = y.max() - y.min()
     max_z_dist = z.max() - z.min()
-    max_dist = max(max_x_dist, max_y_dist, max_z_dist)
+    max_dist = max(max_x_dist, max_y_dist, max_z_dist) / 1.8
     x_center = (x.min() + x.max()) / 2
     y_center = (y.min() + y.max()) / 2
     z_center = (z.min() + z.max()) / 2
@@ -199,8 +204,8 @@ def generatePIL3d(mol, buffer, bg='white', alpha=1.):
 
     fig = plt.figure(figsize=(3, 3))
     ax = fig.add_subplot(projection='3d')
-    ax.set_aspect('equal')
-    ax.view_init(elev=0, azim=0)
+    ax.set_aspect('equal', adjustable='datalim')
+    ax.view_init(elev=90, azim=-90)
     if bg == 'black':
         ax.set_facecolor(black)
     else:
@@ -216,7 +221,7 @@ def generatePIL3d(mol, buffer, bg='white', alpha=1.):
         ax.w_xaxis.line.set_color("white")
 
     # max_value = positions.abs().max().item()
-    axis_lim = 0.40
+    axis_lim = 0.7
     ax.set_xlim(-axis_lim, axis_lim)
     ax.set_ylim(-axis_lim, axis_lim)
     ax.set_zlim(-axis_lim, axis_lim)

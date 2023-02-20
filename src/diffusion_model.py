@@ -152,7 +152,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
         self.val_counter += 1
         if self.name == "debug" or self.val_counter % self.cfg.general.sample_every_val == 0:
             start = time.time()
-            samples = self.sample_n_graphs(n=self.cfg.general.samples_to_generate,
+            samples = self.sample_n_graphs(samples_to_generate=self.cfg.general.samples_to_generate,
                                            chains_to_save=self.cfg.general.chains_to_save,
                                            samples_to_save=self.cfg.general.samples_to_save)
             print("Computing sampling metrics...")
@@ -198,8 +198,10 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
         print(f"Sampling start on GR{self.global_rank}")
         start = time.time()
-        samples = self.sample_n_graphs(n=self.cfg.general.final_model_samples_to_generate,
-                                       chains_to_save=0,       #self.cfg.general.final_model_chains_to_save,
+        print(f"Samples to generate: {self.cfg.general.final_model_samples_to_generate}")
+        print(f"Samples to save: {self.cfg.general.final_model_samples_to_save}")
+        samples = self.sample_n_graphs(samples_to_generate=self.cfg.general.final_model_samples_to_generate,
+                                       chains_to_save=self.cfg.general.final_model_chains_to_save,
                                        samples_to_save=self.cfg.general.final_model_samples_to_save)
         print("Saving the generated graphs")
         filename = f'generated_samples1.txt'
@@ -223,6 +225,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
                 f.write("charges: \n")
                 for c in charges:
                     f.write(f"{c} ")
+                f.write("\n")
 
                 # Pos
                 positions = molecule.positions
@@ -463,11 +466,11 @@ class FullDenoisingDiffusion(pl.LightningModule):
         extra_features.y = torch.cat((extra_features.y, z_t.t), dim=-1)
         return extra_features
 
-    def sample_n_graphs(self, n, chains_to_save, samples_to_save):
+    def sample_n_graphs(self, samples_to_generate, chains_to_save, samples_to_save):
         chains_left_to_save = chains_to_save
 
         samples = []
-        n_nodes = self.node_dist.sample_n(samples_to_save, self.device)
+        n_nodes = self.node_dist.sample_n(min(samples_to_generate, samples_to_save), self.device)
         current_max_size = 0
         current_n_list = []
         for i, n in enumerate(n_nodes):
@@ -492,8 +495,9 @@ class FullDenoisingDiffusion(pl.LightningModule):
         samples.extend(self.sample_batch(n_nodes=current_n_list, batch_id=i + 1,
                                          save_final=len(current_n_list), keep_chain=chains_save,
                                          number_chain_steps=self.number_chain_steps))
-
-        n_nodes = self.node_dist.sample_n(n - samples_to_save, self.device)
+        if (samples_to_generate - samples_to_save) == 0:
+            return samples
+        n_nodes = self.node_dist.sample_n(samples_to_generate - samples_to_save, self.device)
         n_nodes = torch.sort(n_nodes, descending=True)[0]
         current_n_list = []
         for i, n in enumerate(n_nodes):

@@ -27,7 +27,7 @@ warnings.filterwarnings("ignore", category=PossibleUserWarning)
 def get_resume(cfg, dataset_infos, train_smiles):
     saved_cfg = cfg.copy()
 
-    name = cfg.general.name + '_resume'
+    name = cfg.general.name + '_test'
     resume = cfg.general.test_only
     gpus = cfg.general.gpus
     model = FullDenoisingDiffusion.load_from_checkpoint(resume, dataset_infos=dataset_infos,
@@ -81,11 +81,11 @@ def main(cfg: omegaconf.DictConfig):
     if cfg.general.test_only:
         # When testing, previous configuration is fully loaded
         cfg, _ = get_resume(cfg, dataset_infos, train_smiles)
-        os.chdir(cfg.general.test_only.split('checkpoints')[0])
+        # os.chdir(cfg.general.test_only.split('checkpoints')[0])
     elif cfg.general.resume is not None:
         # When resuming, we can override some parts of previous configuration
         cfg, _ = get_resume_adaptive(cfg, dataset_infos, train_smiles)
-        os.chdir(cfg.general.resume.split('checkpoints')[0])
+        # os.chdir(cfg.general.resume.split('checkpoints')[0])
 
     # utils.create_folders(cfg)
 
