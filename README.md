@@ -73,3 +73,10 @@ replace the file is which the error is raised by the content of `ddp_strategy.py
 For me, this file was: `/home/vignac/.conda/envs/moldiffusion/lib/python3.9/site-packages/ray_lightning/ray_ddp.py`
 
 We will try to remove this dependency in the coming weeks.
+
+## Generated samples
+
+
+Geom with explicit H: https://drive.switch.ch/index.php/s/fy0sHsfJMKYB2wJ
+
+
