@@ -1,0 +1,16 @@
+# @package _global_
+general:
+    name : 'qm9h'
+    gpus : 1
+    wandb: 'online'
+    test_only: null
+
+train:
+    n_epochs: 10000
+    batch_size: 512
+    save_model: True
+model:
+    n_layers: 10
+    lambda_train: [3, 0.4, 1, 2, 0 ]         # [pos, x, charges, e, y]
+dataset:
+    remove_h: False

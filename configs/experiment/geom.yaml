@@ -1,0 +1,19 @@
+# @package _global_
+general:
+    name : 'geom'
+    gpus : 3
+    wandb: 'online'
+train:
+    n_epochs: 500
+    batch_size: 350
+    reference_batch_size: 350
+    save_model: True
+model:
+    n_layers: 9
+dataset:
+    name: 'geom'
+    datadir: 'data/geom/'
+    remove_h: True
+    random_subset: null
+    pin_memory: False
+    adaptive_loader: True

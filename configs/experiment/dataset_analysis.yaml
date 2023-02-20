@@ -1,0 +1,8 @@
+# @package _global_
+general:
+    name : 'dataset_analysis'
+    wandb: online
+train:
+    batch_size: 1
+dataset:
+    remove_h: False

@@ -1,0 +1,6 @@
+name: 'geom'            # qm9, qm9_positional
+datadir: 'data/geom/'
+remove_h: False
+random_subset: null
+pin_memory: False
+adaptive_loader: True

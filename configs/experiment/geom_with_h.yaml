@@ -1,0 +1,24 @@
+# @package _global_
+general:
+    name : 'geomH_bigger'
+    gpus : 4
+    wandb: 'online'
+    check_val_every_n_epochs: 5
+    sample_every_val: 2
+    resume: null
+train:
+    n_epochs: 500
+    batch_size: 200
+    reference_batch_size: 400
+    save_model: True
+    lr: 0.0002
+model:
+    n_layers: 10
+    lambda_train: [3, 0.4, 1, 2, 0]
+dataset:
+    name: 'geom'
+    datadir: 'data/geom/'
+    remove_h: False
+    random_subset: null
+    pin_memory: True
+    adaptive_loader: True

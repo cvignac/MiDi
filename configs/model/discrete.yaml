@@ -1,0 +1,20 @@
+# Model settings
+type: 'discrete'
+transition: 'marginal'                          # uniform or marginal
+model: 'graph_tf'
+diffusion_steps: 500
+faster_sampling: 5                              # At each sampling step, set s=t-faster sampling (1 for normal sampling)
+diffusion_noise_schedule: 'cosine'              # 'cosine', 'polynomial_2'
+n_layers: 9
+
+
+extra_features: null        # 'all', 'cycles', 'eigenvalues' or null
+
+# Do not set hidden_mlp_E, dim_ffE too high, computing large tensors on the edges is costly
+# At the moment (03/08), y contains quite little information
+hidden_mlp_dims: {'X': 256, 'E': 128, 'y': 128, 'pos': 64}
+
+# The dimensions should satisfy dx % n_head == 0
+hidden_dims : {'dx': 256, 'de': 64, 'dy': 128, 'n_head': 8, 'dim_ffX': 256, 'dim_ffE': 128, 'dim_ffy': 256}
+
+lambda_train: [3, 0.4, 1, 2, 0]         # [pos, x, charges, e, y]
