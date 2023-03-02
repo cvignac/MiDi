@@ -590,18 +590,7 @@ if __name__ == '__main__':
             if data.edge_index.numel() == 0:
                 print("Data without edges")
                 continue
-            # print("SMILES", data.smiles)
 
-        #     bonds = torch_geometric.utils.to_dense_adj(edge_index=data.edge_index, edge_attr=data.edge_attr,
-        #                                                max_num_nodes=len(data.x))[0]
-        #     bonds[bonds == 4] = 1.5
-        #     valencies = torch.sum(bonds, dim=-1)
-        #
-        #     for at_type, charge, val in zip(data.x, data.charges, valencies):
-        #         c[dataset_infos.atom_decoder[at_type.item()], charge.item(), val.item()] += 1
-        #
-        # print("Atom-charge-valency counter", c)
-        # #
             atom_types = data.x
             bonds = torch_geometric.utils.to_dense_adj(edge_index=data.edge_index, edge_attr=data.edge_attr,
                                                        max_num_nodes=len(atom_types))[0]

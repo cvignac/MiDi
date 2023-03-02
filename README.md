@@ -15,7 +15,7 @@ Clément Vignac, Nagham Osman, Laura Toni, Pascal Frossard
   - `pip install wandb`
 - `conda install pyg -c pyg`
 - try the previous import + `from torch_geometric.data import Data`
-- `pip install pytorch-lightning`
+- `pip install pytorch-lightning==1.6.5`
 - try the previous imports + `import pytorch_lightning as pl`
 - `pip install ray ray-lightning`
 - try the previous imports + `import ray-lightning`
@@ -67,7 +67,7 @@ Run:
 
 ## Multi-gpu training
 
-Ray-lightning is currently not well maintained, and multi-gpu training might fail. If you get a multi-gpu id error,
+Ray-lightning is currently not very well maintained, and multi-gpu training might fail. If you get a multi-gpu id error,
 replace the file is which the error is raised by the content of `ddp_strategy.py` at the root of this folder
 
 For me, this file was: `/home/vignac/.conda/envs/moldiffusion/lib/python3.9/site-packages/ray_lightning/ray_ddp.py`
@@ -80,3 +80,22 @@ We will try to remove this dependency in the coming weeks.
 Geom with explicit H: https://drive.switch.ch/index.php/s/fy0sHsfJMKYB2wJ
 
 
+## Evaluate your model on the proposed metrics
+
+To benchmark your own model with the proposed metrics, you can use the `sampling_metrics` function in 
+`src/metrics/molecular_metrics.py: sampling_metrics(molecules=molecule_list, name='my_method', current_epoch=-1, local_rank=0)`.
+
+You'll need to write a few lines to load your generated graphs and create a 
+list of `Molecule` objects (in `src/analysis/rdkit_functions.py`).
+
+
+## Cite this paper
+
+```
+@article{vignac2023midi,
+  title={MiDi: Mixed Graph and 3D Denoising Diffusion for Molecule Generation},
+  author={Vignac, Clement and Osman, Nagham and Toni, Laura and Frossard, Pascal},
+  journal={arXiv preprint arXiv:2302.09048},
+  year={2023}
+}
+```

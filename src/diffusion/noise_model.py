@@ -26,8 +26,6 @@ class NoiseModel:
 
         if noise_schedule == 'cosine':
             betas = diffusion_utils.cosine_beta_schedule_discrete(timesteps)
-        elif noise_schedule == 'custom':
-            betas = diffusion_utils.custom_beta_schedule_discrete(timesteps)
         else:
             raise NotImplementedError(noise_schedule)
 
