@@ -1,20 +1,25 @@
 # @package _global_
 general:
-    name : 'newPNA'
-    gpus : 2
+    name : 'geom-with-h-uniform'
+    gpus : 1
     wandb: 'online'
-    check_val_every_n_epochs: 1
-    sample_every_val: 1
     test_only: null
+    resume: '/scratch/uceeosm/MiDi/outputs/2023-04-21/14-00-42-geom-with-h-uniform/checkpoints/geom-with-h-uniform/epoch=124.ckpt'
 train:
     n_epochs: 500
     batch_size: 200
-    reference_batch_size: 350
+    reference_batch_size: 250
     save_model: True
     lr: 0.0002
 model:
     n_layers: 12
     lambda_train: [3, 0.4, 1, 2, 0]
+    nu:
+      p: 1
+      x: 1
+      c: 1
+      e: 1
+      y: 1
 dataset:
     name: 'geom'
     datadir: 'data/geom/'

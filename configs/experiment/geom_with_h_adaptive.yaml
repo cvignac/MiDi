@@ -1,20 +1,25 @@
 # @package _global_
 general:
-    name : 'newPNA'
+    name : 'geom-with-h-adaptive'
     gpus : 2
     wandb: 'online'
-    check_val_every_n_epochs: 1
-    sample_every_val: 1
     test_only: null
+    resume: '/scratch/uceeosm/MiDi/outputs/2023-04-18/16-10-36-geom-with-h-adaptive/checkpoints/geom-with-h-adaptive/last-v1.ckpt'
 train:
-    n_epochs: 500
+    n_epochs: 1000
     batch_size: 200
     reference_batch_size: 350
     save_model: True
     lr: 0.0002
 model:
     n_layers: 12
-    lambda_train: [3, 0.4, 1, 2, 0]
+    lambda_train: [5, 0.4, 1, 2, 0]
+    nu:
+      p: 2.5
+      x: 1
+      c: 1
+      e: 1.5
+      y: 1
 dataset:
     name: 'geom'
     datadir: 'data/geom/'

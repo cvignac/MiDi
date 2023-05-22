@@ -14,9 +14,7 @@ import omegaconf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities.warnings import PossibleUserWarning
-from hydra.utils import get_original_cwd
 
-from src import utils
 from src.datasets import qm9_dataset, geom_dataset
 from src.diffusion_model import FullDenoisingDiffusion
 
@@ -24,39 +22,14 @@ from src.diffusion_model import FullDenoisingDiffusion
 warnings.filterwarnings("ignore", category=PossibleUserWarning)
 
 
-def get_resume(cfg, dataset_infos, train_smiles):
-    saved_cfg = cfg.copy()
-
-    name = cfg.general.name + '_test'
-    resume = cfg.general.test_only
+def get_resume(cfg, dataset_infos, train_smiles, checkpoint_path, test: bool):
+    name = cfg.general.name + ('_test' if test else '_resume')
     gpus = cfg.general.gpus
-    model = FullDenoisingDiffusion.load_from_checkpoint(resume, dataset_infos=dataset_infos,
+    model = FullDenoisingDiffusion.load_from_checkpoint(checkpoint_path, dataset_infos=dataset_infos,
                                                         train_smiles=train_smiles)
-    cfg = model.cfg
     cfg.general.gpus = gpus
-    cfg.general.test_only = resume
     cfg.general.name = name
-    cfg = utils.update_config_with_new_keys(cfg, saved_cfg)
     return cfg, model
-
-
-def get_resume_adaptive(cfg, dataset_infos, train_smiles):
-    saved_cfg = cfg.copy()
-    root_dir = pathlib.Path(get_original_cwd()).parents[0]
-    resume_path = os.path.join(root_dir, cfg.general.resume)
-    model = FullDenoisingDiffusion.load_from_checkpoint(resume_path, dataset_infos=dataset_infos,
-                                                        train_smiles=train_smiles)
-    new_cfg = model.cfg
-    for category in cfg:
-        for arg in cfg[category]:
-            new_cfg[category][arg] = cfg[category][arg]
-
-    new_cfg.general.resume = resume_path
-    new_cfg.general.name = new_cfg.general.name + '_resume'
-
-    new_cfg = utils.update_config_with_new_keys(new_cfg, saved_cfg)
-    return new_cfg, model
-
 
 @hydra.main(version_base='1.3', config_path='../configs', config_name='config')
 def main(cfg: omegaconf.DictConfig):
@@ -72,20 +45,17 @@ def main(cfg: omegaconf.DictConfig):
             datamodule = geom_dataset.GeomDataModule(cfg)
             dataset_infos = geom_dataset.GeomInfos(datamodule=datamodule, cfg=cfg)
 
-        # train_smiles = list(datamodule.train_dataloader().dataset.smiles)
-        train_smiles = []        # TODO REVERT
+        train_smiles = list(datamodule.train_dataloader().dataset.smiles) if cfg.general.test_only else []
 
     else:
         raise NotImplementedError("Unknown dataset {}".format(cfg["dataset"]))
 
     if cfg.general.test_only:
-        # When testing, previous configuration is fully loaded
-        cfg, _ = get_resume(cfg, dataset_infos, train_smiles)
-        # os.chdir(cfg.general.test_only.split('checkpoints')[0])
+        cfg, _ = get_resume(cfg, dataset_infos, train_smiles, cfg.general.test_only, test=True)
     elif cfg.general.resume is not None:
         # When resuming, we can override some parts of previous configuration
-        cfg, _ = get_resume_adaptive(cfg, dataset_infos, train_smiles)
-        # os.chdir(cfg.general.resume.split('checkpoints')[0])
+        print("Resuming from {}".format(cfg.general.resume))
+        cfg, _ = get_resume(cfg, dataset_infos, train_smiles, cfg.general.resume, test=False)
 
     # utils.create_folders(cfg)
 
@@ -141,9 +111,6 @@ def main(cfg: omegaconf.DictConfig):
                       gpus=effective_gpus, # strategy is set <=> don't set gpus
                       strategy=strategy,
                       accelerator=gp if torch.cuda.is_available() and cfg.general.gpus > 0 else 'cpu',
-                      limit_train_batches=LIMITED if name == 'test' else None,
-                      limit_val_batches=LIMITED if name == 'test' else None,
-                      limit_test_batches=LIMITED if name == 'test' else None,
                       max_epochs=cfg.train.n_epochs,
                       check_val_every_n_epoch=cfg.general.check_val_every_n_epochs,
                       fast_dev_run=cfg.general.name == 'debug',
@@ -155,10 +122,11 @@ def main(cfg: omegaconf.DictConfig):
     if not cfg.general.test_only:
         trainer.fit(model, datamodule=datamodule, ckpt_path=cfg.general.resume)
         # if cfg.general.name not in ['debug', 'test']:
-        trainer.test(model, datamodule=datamodule)
+        #     trainer.test(model, datamodule=datamodule)
     else:
         # Start by evaluating test_only_path
-        trainer.test(model, datamodule=datamodule, ckpt_path=cfg.general.test_only)
+        for i in range(cfg.general.num_final_sampling):
+            trainer.test(model, datamodule=datamodule, ckpt_path=cfg.general.test_only)
         if cfg.general.evaluate_all_checkpoints:
             directory = pathlib.Path(cfg.general.test_only).parents[0]
             print("Directory:", directory)

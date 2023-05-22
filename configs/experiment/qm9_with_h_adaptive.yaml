@@ -1,0 +1,28 @@
+# @package _global_
+general:
+    name : 'h_ada_sampling'
+    gpus : 1
+    wandb: 'online'
+    test_only: '/home/uceeosm/profile.V6/Desktop/MiDi/outputs/2023-04-21/qm9_with_h_adaptive/checkpoints/qm9_h_adaptive.ckpt'
+    num_final_sampling: 5
+    final_model_samples_to_generate: 10000
+    final_model_samples_to_save: 10
+    final_model_chains_to_save: 4
+train:
+    n_epochs: 10000
+    batch_size: 256
+    save_model: True
+    lambda_train: [3, 0.4, 1, 2, 0]
+
+model:
+    n_layers: 12
+    nu:
+        p: 2.5
+        x: 1
+        c: 1
+        e: 1.5
+        y: 1
+    extra_features: null
+
+dataset:
+    remove_h: False

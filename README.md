@@ -74,10 +74,40 @@ For me, this file was: `/home/vignac/.conda/envs/moldiffusion/lib/python3.9/site
 
 We will try to remove this dependency in the coming weeks.
 
+## Checkpoints
+
+QM9 implicit H:
+  - command: `python3 main.py dataset=qm9 dataset.remove_h=True +experiment=qm9_with_h_uniform`
+  - checkpoint: missing
+
+QM9 explicit H: 
+  - command: `python3 main.py dataset=qm9 dataset.remove_h=False +experiment=qm9_with_h_adaptive`
+  - checkpoint: https://drive.switch.ch/index.php/s/rLOnLVdKdonUrs6
+
+Geom implicit H:
+  - command: `python3 main.py dataset=geom dataset.remove_h=True +experiment=geom_with_h`
+  - checkpoint: https://drive.switch.ch/index.php/s/ZcMWIJMVlLsBGYS
+
+Geom explicit H:
+  - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_uniform`
+  - checkpoint: https://drive.switch.ch/index.php/s/SSmqhqN6zHIComa
+
+
+
 ## Generated samples
 
+QM9 implicit H:
+  - Full graphs: https://drive.switch.ch/index.php/s/dNFcouhBoqZfSjB
+  - Smiles: https://drive.switch.ch/index.php/s/qrqhtFqLqOI17zo
 
-Geom with explicit H: https://drive.switch.ch/index.php/s/fy0sHsfJMKYB2wJ
+QM9 explicit H:
+  - Full graphs: https://drive.switch.ch/index.php/s/b3ffvPAw8CqgYym
+  - Smiles: https://drive.switch.ch/index.php/s/OrhJb3s0rYlYUrS
+
+Geom with explicit H:
+  - Full graphs: TODO
+  - Smiles: https://drive.switch.ch/index.php/s/023FzABjVDeAgO2
+
 
 
 ## Evaluate your model on the proposed metrics
@@ -87,6 +117,14 @@ To benchmark your own model with the proposed metrics, you can use the `sampling
 
 You'll need to write a few lines to load your generated graphs and create a 
 list of `Molecule` objects (in `src/analysis/rdkit_functions.py`).
+
+## Use MiDi on a new dataset
+
+To implement a new dataset, you will need to create a new file in the `src/datasets` folder. 
+This file should implement a Dataset class, a Datamodule class and and Infos class. 
+Check `qm9_dataset.py` and `geom_dataset.py` for examples.
+
+Once the dataset file is written, the code in main.py can be adapted to handle the new dataset, and a new file can be added in `configs/dataset`.
 
 
 ## Cite this paper

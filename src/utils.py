@@ -196,44 +196,6 @@ def to_dense(data, dataset_info, device=None):
     return data.mask()
 
 
-# def encode_no_edge(E):
-#     assert len(E.shape) == 4, f"E.shape: {E.shape}"
-#     if E.shape[-1] == 0:
-#         return E
-#     no_edge = torch.sum(E, dim=3) == 0
-#     first_elt = E[:, :, :, 0]
-#     first_elt[no_edge] = 1
-#     E[:, :, :, 0] = first_elt
-#     diag = torch.eye(E.shape[1], dtype=torch.bool).unsqueeze(0).expand(E.shape[0], -1, -1)
-#     E[diag] = 0
-#     return E
-
-
-def update_config_with_new_keys(cfg, saved_cfg):
-    saved_general = saved_cfg.general
-    saved_train = saved_cfg.train
-    saved_model = saved_cfg.model
-
-    for key, val in saved_general.items():
-        OmegaConf.set_struct(cfg.general, True)
-        with open_dict(cfg.general):
-            if key not in cfg.general.keys():
-                setattr(cfg.general, key, val)
-
-    OmegaConf.set_struct(cfg.train, True)
-    with open_dict(cfg.train):
-        for key, val in saved_train.items():
-            if key not in cfg.train.keys():
-                setattr(cfg.train, key, val)
-
-    OmegaConf.set_struct(cfg.model, True)
-    with open_dict(cfg.model):
-        for key, val in saved_model.items():
-            if key not in cfg.model.keys():
-                setattr(cfg.model, key, val)
-    return cfg
-
-
 class PlaceHolder:
     def __init__(self, pos, X, charges, E, y, t_int=None, t=None, node_mask=None):
         self.pos = pos

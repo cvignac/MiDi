@@ -1,0 +1,30 @@
+# @package _global_
+general:
+    name : 'noh_ada3'
+    gpus : 1
+    wandb: 'online'
+    test_only: '/home/vignac/MoleculeDiffusion/outputs/2023-04-14/18-16-35-noh_ada2/checkpoints/noh_ada2/epoch=1974.ckpt'
+    resume: null
+    evaluate_all_checkpoints: False
+    final_model_samples_to_generate: 10000
+    final_model_samples_to_save: 10
+    final_model_chains_to_save: 4
+    num_final_sampling: 5
+train:
+    n_epochs: 2000
+    batch_size: 1024
+    save_model: True
+    num_workers: 4
+    lr: 0.0001
+model:
+    n_layers: 10
+    lambda_train: [5, 0.4, 1, 2, 0]
+    nu:
+        p: 2.5
+        x: 1
+        c: 1
+        e: 1.5
+        y: 1
+dataset:
+    remove_h: True
+    pin_memory: True

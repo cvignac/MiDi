@@ -1,8 +1,4 @@
-from collections import Counter
-
 import torch
-import wandb
-import numpy as np
 from rdkit import Chem, RDLogger
 from rdkit.Geometry import Point3D
 
@@ -22,96 +18,6 @@ allowed_bonds = {'H': {0: 1, 1: 0, -1: 0},
 bond_dict = [None, Chem.rdchem.BondType.SINGLE, Chem.rdchem.BondType.DOUBLE, Chem.rdchem.BondType.TRIPLE,
              Chem.rdchem.BondType.AROMATIC]
 ATOM_VALENCY = {6: 4, 7: 3, 8: 2, 9: 1, 15: 3, 16: 2, 17: 1, 35: 1, 53: 1}
-
-
-class BasicMolecularMetrics(object):
-    def __init__(self, dataset_info, train_smiles=None):
-        self.atom_decoder = dataset_info.atom_decoder
-        self.dataset_info = dataset_info
-
-        # Retrieve dataset smiles only for qm9 currently.
-        self.dataset_smiles_list = set(train_smiles)
-
-    def compute_validity(self, generated):
-        """ generated: list of couples (positions, atom_types)"""
-        valid = []
-        num_components = []
-        all_smiles = []
-        error_message = Counter()
-        for mol in generated:
-            rdmol = mol.rdkit_mol
-            if rdmol is not None:
-                try:
-                    mol_frags = Chem.rdmolops.GetMolFrags(rdmol, asMols=True, sanitizeFrags=False)
-                    num_components.append(len(mol_frags))
-                    if len(mol_frags) > 1:
-                        error_message[4] += 1
-                    else:
-                        largest_mol = max(mol_frags, default=mol, key=lambda m: m.GetNumAtoms())
-                        Chem.SanitizeMol(largest_mol)
-                        smiles = Chem.MolToSmiles(largest_mol)
-                        valid.append(smiles)
-                        all_smiles.append(smiles)
-                except Chem.rdchem.AtomValenceException:
-                    error_message[1] += 1
-                    # print("Valence error in GetmolFrags")
-                except Chem.rdchem.KekulizeException:
-                    error_message[2] += 1
-                    # print("Can't kekulize molecule")
-                except Chem.rdchem.AtomKekulizeException or ValueError:
-                    error_message[3] += 1
-            # else:
-            #     error_message[3] += 1
-            #     all_smiles.append(None)
-
-        print(f"Error messages: AtomValence {error_message[1]}, Kekulize {error_message[2]}, other {error_message[3]}, "
-              f"connected_components {error_message[4]}"
-              f" -- No error {len(generated) - sum(error_message.values())} / {len(generated)}")
-        return valid, len(valid) / len(generated), np.array(num_components), all_smiles, error_message
-
-    def compute_uniqueness(self, valid):
-        """ valid: list of SMILES strings."""
-        return list(set(valid)), len(set(valid)) / len(valid)
-
-    def compute_novelty(self, unique):
-        num_novel = 0
-        novel = []
-        if self.dataset_smiles_list is None:
-            print("Dataset smiles is None, novelty computation skipped")
-            return 1, 1
-        for smiles in unique:
-            if smiles not in self.dataset_smiles_list:
-                novel.append(smiles)
-                num_novel += 1
-        return novel, num_novel / len(unique)
-
-    def evaluate(self, generated):
-        """ generated: list of pairs (positions: n x 3, atom_types: n [int])
-            the positions and atom types should already be masked. """
-        valid, validity, num_components, all_smiles, error_message = self.compute_validity(generated)
-        nc_mu = float(num_components.mean()) if len(num_components) > 0 else 0.0
-        nc_min = float(num_components.min()) if len(num_components) > 0 else 0.0
-        nc_max = float(num_components.max()) if len(num_components) > 0 else 0.0
-        print(f"Validity over {len(generated)} molecules: {validity * 100 :.2f}%")
-        print(f"Number of connected components of {len(generated)} molecules: min:{nc_min:.2f} mean:{nc_mu:.2f} max:{nc_max:.2f}")
-
-        if validity > 0:
-            unique, uniqueness = self.compute_uniqueness(valid)
-            print(f"Uniqueness over {len(valid)} valid molecules: {uniqueness * 100 :.2f}%")
-
-            if self.dataset_smiles_list is not None:
-                _, novelty = self.compute_novelty(unique)
-                print(f"Novelty over {len(unique)} unique valid molecules: {novelty * 100 :.2f}%")
-            else:
-                novelty = -1.0
-        else:
-            novelty = -1.0
-            uniqueness = 0.0
-            unique = []
-        return [validity, uniqueness, novelty], unique, dict(nc_min=nc_min, nc_max=nc_max, nc_mu=nc_mu), all_smiles
-
-
-
 
 
 class Molecule:
@@ -182,6 +88,7 @@ class Molecule:
 
 def check_stability(molecule, dataset_info, debug=False, atom_decoder=None, smiles=None):
     """ molecule: Molecule object. """
+    device = molecule.atom_types.device
     if atom_decoder is None:
         atom_decoder = dataset_info.atom_decoder
 
@@ -216,44 +123,7 @@ def check_stability(molecule, dataset_info, debug=False, atom_decoder=None, smil
             print()
         n_stable_bonds += int(is_stable)
 
-    return mol_stable, n_stable_bonds, len(atom_types)
+    return torch.tensor([mol_stable], dtype=torch.float, device=device),\
+           torch.tensor([n_stable_bonds], dtype=torch.float, device=device),\
+           len(atom_types)
 
-
-def compute_molecular_metrics(molecule_list, train_smiles, dataset_info):
-    """ molecule_list: List[Molecule] """
-
-    if not dataset_info.remove_h:
-        print(f'Analyzing molecule stability...')
-
-        molecule_stable = 0
-        nr_stable_bonds = 0
-        n_atoms = 0
-        n_molecules = len(molecule_list)
-
-        for i, mol in enumerate(molecule_list):
-            validity_results = check_stability(mol, dataset_info)
-
-            molecule_stable += int(validity_results[0])
-            nr_stable_bonds += int(validity_results[1])
-            n_atoms += int(validity_results[2])
-
-        # Validity
-        fraction_mol_stable = molecule_stable / float(n_molecules)
-        fraction_atm_stable = nr_stable_bonds / float(n_atoms)
-        validity_dict = {'mol_stable': fraction_mol_stable, 'atm_stable': fraction_atm_stable}
-        if wandb.run:
-            wandb.log(validity_dict, commit=False)
-    else:
-        validity_dict = {'mol_stable': -1, 'atm_stable': -1}
-
-    metrics = BasicMolecularMetrics(dataset_info, train_smiles)
-    rdkit_metrics = metrics.evaluate(molecule_list)
-    all_smiles = rdkit_metrics[-1]
-    if wandb.run:
-        nc = rdkit_metrics[-2]
-        print(nc['nc_max'])
-        wandb.log({'Validity': rdkit_metrics[0][0], 'Uniqueness': rdkit_metrics[0][1], 'Novelty': rdkit_metrics[0][2]})
-        wandb.log({"nc_max": nc["nc_max"]}, commit=False)
-        wandb.log({"nc_mu": nc["nc_mu"]}, commit=False)
-    print("Stability metrics:", validity_dict)
-    return validity_dict, rdkit_metrics, all_smiles

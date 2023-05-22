@@ -1,0 +1,33 @@
+# @package _global_
+general:
+    name : 'geom-no-h-adaptive-sampling'
+    gpus : 1
+    wandb: 'online'
+    #test_only: '/scratch/uceeosm/MiDi/outputs/2023-04-18/14-49-22-geom-no-h-adaptive/checkpoints/geom-no-h-adaptive_resume/epoch=649.ckpt'
+    test_only: '/scratch/uceeosm/MiDi/outputs/2023-04-22/15-45-30-geom-no-h-adaptive-5-cont/checkpoints/geom-no-h-adaptive-5-cont_resume/last.ckpt'
+    evaluate_all_checkpoints: False
+    final_model_samples_to_generate: 10000
+    final_model_samples_to_save: 10
+    final_model_chains_to_save: 4
+    num_final_sampling: 1
+train:
+    n_epochs: 1000
+    batch_size: 350
+    reference_batch_size: 350
+    save_model: True
+model:
+    n_layers: 12
+    lambda_train: [5, 0.4, 1, 2, 0]
+    nu:
+      p: 2.5
+      x: 1
+      c: 1
+      e: 1.5
+      y: 1
+dataset:
+    name: 'geom'
+    datadir: 'data/geom/'
+    remove_h: True
+    random_subset: null
+    pin_memory: True
+    adaptive_loader: True

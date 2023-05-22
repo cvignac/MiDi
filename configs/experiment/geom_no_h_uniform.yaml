@@ -1,0 +1,32 @@
+# @package _global_
+general:
+    name : 'geom-no-h-uniform-sampling'
+    gpus : 1
+    wandb: 'online'
+    test_only: '/scratch/uceeosm/MiDi/outputs/2023-04-18/13-36-05-geom-no-h-uniform-5/checkpoints/geom-no-h-uniform-5_resume/last-v1.ckpt'
+    evaluate_all_checkpoints: False
+    final_model_samples_to_generate: 10000
+    final_model_samples_to_save: 10
+    final_model_chains_to_save: 4
+    num_final_sampling: 5
+train:
+    n_epochs: 500
+    batch_size: 350
+    reference_batch_size: 350
+    save_model: True
+model:
+    n_layers: 12
+    lambda_train: [3, 0.4, 1, 2, 0 ]
+    nu:
+      p: 1
+      x: 1
+      c: 1
+      e: 1
+      y: 1
+dataset:
+    name: 'geom'
+    datadir: 'data/geom/'
+    remove_h: True
+    random_subset: null
+    pin_memory: True
+    adaptive_loader: True

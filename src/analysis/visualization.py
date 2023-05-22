@@ -25,8 +25,6 @@ def visualize(path: str, molecules: list, num_molecules_to_visualize: int, log='
         pca = PCA(n_components=3)
 
     # visualize the final molecules
-    if num_molecules_to_visualize != -1:
-        print(f"Visualizing {num_molecules_to_visualize} of {len(molecules)}")
     if num_molecules_to_visualize == -1:
         num_molecules_to_visualize = len(molecules)
     if num_molecules_to_visualize > len(molecules):
@@ -37,7 +35,9 @@ def visualize(path: str, molecules: list, num_molecules_to_visualize: int, log='
     for i in range(num_molecules_to_visualize):
         mol = molecules[i]
         if log == 'graph':
-            pos = pca.fit_transform(mol.positions)
+            pos = mol.positions.cpu().numpy()
+            if mol.positions.shape[0] > 2:
+                pos = pca.fit_transform(pos)
             mol.positions = torch.from_numpy(pos).to(mol.atom_types.device)
         file_path = os.path.join(path, f'{file_prefix}{i}.png')
         plot_save_molecule(molecules[i], save_path=file_path, conformer2d=conformer2d)
@@ -106,10 +106,11 @@ def visualize_chains(path, chain, atom_decoder, num_nodes):
         chain_positions = chain.pos[:, i, :][:, :num_nodes[i]]
 
         # Transform the positions using PCA to align best to the final molecule
-        pca.fit(chain_positions[-1])
+        if chain_positions[-1].shape[0] > 2:
+            pca.fit(chain_positions[-1])
         mols = []
         for j in range(chain_atoms.shape[0]):
-            pos = pca.transform(chain_positions[j])
+            pos = pca.transform(chain_positions[j]) if chain_positions[-1].shape[0] > 2 else chain_positions[j].numpy()
             mols.append(Molecule(atom_types=chain_atoms[j], charges=chain_charges[j], bond_types=chain_bonds[j],
                                  positions=torch.from_numpy(pos).to(chain_atoms.device),
                                  atom_decoder=atom_decoder))
@@ -168,28 +169,30 @@ def plot_molecule3d(ax, positions, atom_types, edge_types, alpha, hex_bg_color, 
     y = (y - y_center) / max_dist
     z = (z - z_center) / max_dist
 
-    radii = 0.77 if len(x) < 30 else 0.4
+    radii = 0.4
     areas = 300 * (radii ** 2)
     if num_atom_types == 4:
         colormap = ['k', 'b', 'r', 'c']             # QM9 no H
     elif num_atom_types == 5:
         colormap = ['C7', 'k', 'b', 'r', 'c']
     elif num_atom_types == 16:
-        colormap = ['C7', 'C0', 'k', 'b', 'r', 'c', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C8', 'C9', 'C10', 'C11']
+        colormap = ['C7', 'C0', 'k', 'b', 'r', 'c', 'C1', 'C2', 'C3', 'y', 'C5', 'C6', 'C8', 'C9', 'C10', 'C11']
     elif num_atom_types == 15:
-        colormap = ['C0', 'k', 'b', 'r', 'c', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C8', 'C9', 'C10', 'C11']
+        colormap = ['C0', 'k', 'b', 'r', 'c', 'C1', 'C2', 'C3', 'y', 'C5', 'C6', 'C8', 'C9', 'C10', 'C11']
     else:
         colormap = [f'C{a}' for a in range(num_atom_types)]
 
     colors = [colormap[a] for a in atom_types]
-
-    for i in range(len(x)):
-        for j in range(i + 1, len(x)):
+    for i in range(edge_types.shape[0]):
+        for j in range(i + 1, edge_types.shape[1]):
             draw_edge = edge_types[i, j]
             if draw_edge > 0:
-                ax.plot([x[i], x[j]], [y[i], y[j]], [z[i], z[j]], linewidth=1, c=hex_bg_color, alpha=alpha)
+                ax.plot([x[i].cpu().numpy(), x[j].cpu().numpy()],
+                        [y[i].cpu().numpy(), y[j].cpu().numpy()],
+                        [z[i].cpu().numpy(), z[j].cpu().numpy()],
+                        linewidth=1, c=hex_bg_color, alpha=alpha)
 
-    ax.scatter(x, y, z, s=areas, alpha=0.9 * alpha, c=colors)
+    ax.scatter(x.cpu().numpy(), y.cpu().numpy(), z.cpu().numpy(), s=areas, alpha=0.9 * alpha, c=colors)
     return max_dist
 
 

@@ -15,9 +15,14 @@ class ExtraFeatures:
             return input_dims
         elif self.features_type == 'connectivity':
             input_dims.E += 1
-            return input_dims
+
+        elif self.features_type == 'all':
+            input_dims.X += 6
+            input_dims.E += 1
+            input_dims.y += 11
         else:
-            raise NotImplementedError(f"{self.features_type} feature type not implemented.")
+            raise NotImplementedError(f"'{self.features_type}' feature type not implemented.")
+        return input_dims
 
     def __call__(self, z_t):
         pos = z_t.pos
@@ -59,13 +64,16 @@ class ExtraFeatures:
         elif self.features_type == 'all':
             eigenfeatures = self.eigenfeatures(z_t)
             E = z_t.E
-            extra_edge_attr = torch.zeros((*E.shape[:-1], 0), device=E.device)
+            extra_edge_attr = connectivity_feature(z_t).to(E.device)
             n_components, batched_eigenvalues, nonlcc_indicator, k_lowest_eigvec = eigenfeatures   # (bs, 1), (bs, 10),
                                                                                                 # (bs, n, 1), (bs, n, 2)
 
+
             return utils.PlaceHolder(X=torch.cat((x_cycles, nonlcc_indicator, k_lowest_eigvec), dim=-1),
                                      E=extra_edge_attr,
-                                     y=torch.hstack((n, y_cycles, n_components, batched_eigenvalues)))
+                                     y=torch.hstack((n, y_cycles, n_components, batched_eigenvalues)),
+                                     pos=None,
+                                     charges=None)
         else:
             raise ValueError(f"Features type {self.features_type} not implemented")
 

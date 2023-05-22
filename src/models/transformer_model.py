@@ -12,7 +12,7 @@ from torch import Tensor
 
 import src.utils as utils
 from src.diffusion import diffusion_utils
-from src.models.layers import Xtoy, Etoy, SE3Norm, PositionsMLP, masked_softmax, EtoX
+from src.models.layers import Xtoy, Etoy, SE3Norm, PositionsMLP, masked_softmax, EtoX, SetNorm, GraphNorm
 
 
 class XEyTransformerLayer(nn.Module):
@@ -35,6 +35,8 @@ class XEyTransformerLayer(nn.Module):
 
         self.linX1 = Linear(dx, dim_ffX, **kw)
         self.linX2 = Linear(dim_ffX, dx, **kw)
+        # self.normX1 = SetNorm(feature_dim=dx, eps=layer_norm_eps, **kw)
+        # self.normX2 = SetNorm(feature_dim=dx, eps=layer_norm_eps, **kw)
         self.normX1 = LayerNorm(dx, eps=layer_norm_eps, **kw)
         self.normX2 = LayerNorm(dx, eps=layer_norm_eps, **kw)
         self.dropoutX1 = Dropout(dropout)
@@ -45,6 +47,8 @@ class XEyTransformerLayer(nn.Module):
 
         self.linE1 = Linear(de, dim_ffE, **kw)
         self.linE2 = Linear(dim_ffE, de, **kw)
+        # self.normE1 = GraphNorm(feature_dim=de, eps=layer_norm_eps, **kw)
+        # self.normE2 = GraphNorm(feature_dim=de, eps=layer_norm_eps, **kw)
         self.normE1 = LayerNorm(de, eps=layer_norm_eps, **kw)
         self.normE2 = LayerNorm(de, eps=layer_norm_eps, **kw)
         self.dropoutE1 = Dropout(dropout)
@@ -74,17 +78,21 @@ class XEyTransformerLayer(nn.Module):
         y = features.y
         pos = features.pos
         node_mask = features.node_mask
+        x_mask = node_mask.unsqueeze(-1)        # bs, n, 1
+        e_mask1 = x_mask.unsqueeze(2)           # bs, n, 1, 1
+        e_mask2 = x_mask.unsqueeze(1)           # bs, 1, n, 1
         newX, newE, new_y, vel = self.self_attn(X, E, y, pos, node_mask=node_mask)
 
         newX_d = self.dropoutX1(newX)
+        # X = self.normX1(X + newX_d, x_mask)
         X = self.normX1(X + newX_d)
-
         # new_pos = pos + vel
-        new_pos = self.norm_pos1(vel) + pos
+        new_pos = self.norm_pos1(vel, x_mask) + pos
         if torch.isnan(new_pos).any():
             raise ValueError("NaN in new_pos")
 
         newE_d = self.dropoutE1(newE)
+        # E = self.normE1(E + newE_d, e_mask1, e_mask2)
         E = self.normE1(E + newE_d)
 
         new_y_d = self.dropout_y1(new_y)
@@ -92,10 +100,12 @@ class XEyTransformerLayer(nn.Module):
 
         ff_outputX = self.linX2(self.dropoutX2(self.activation(self.linX1(X))))
         ff_outputX = self.dropoutX3(ff_outputX)
+        # X = self.normX2(X + ff_outputX, x_mask)
         X = self.normX2(X + ff_outputX)
 
         ff_outputE = self.linE2(self.dropoutE2(self.activation(self.linE1(E))))
         ff_outputE = self.dropoutE3(ff_outputE)
+        # E = self.normE2(E + ff_outputE, e_mask1, e_mask2)
         E = self.normE2(E + ff_outputE)
         E = 0.5 * (E + torch.transpose(E, 1, 2))
 
@@ -201,7 +211,7 @@ class NodeEdgeBlock(nn.Module):
 
         norm1 = self.lin_norm_pos1(norm_pos)             # bs, n, de
         norm2 = self.lin_norm_pos2(norm_pos)             # bs, n, de
-        dist1 = F.relu(self.lin_dist1(pos_info) + norm1.unsqueeze(2) + norm2.unsqueeze(1))
+        dist1 = F.relu(self.lin_dist1(pos_info) + norm1.unsqueeze(2) + norm2.unsqueeze(1)) * e_mask1 * e_mask2
 
         # 1. Process E
         Y = self.in_E(E)
@@ -238,6 +248,7 @@ class NodeEdgeBlock(nn.Module):
         # 2.2 Incorporate position features
         pos_x_mul = self.pos_att_mul(dist1)
         a = a + pos_x_mul * a
+        a = a * e_mask1 * e_mask2
 
         # 2.3 Self-attention
         softmax_mask = e_mask2.expand(-1, n, -1, self.n_head)
@@ -249,10 +260,10 @@ class NodeEdgeBlock(nn.Module):
         weighted_V = self.out(weighted_V) * x_mask              # bs, n, dx
 
         # Incorporate E to X
-        e_x_mul = self.e_x_mul(E)
+        e_x_mul = self.e_x_mul(E, e_mask2)
         weighted_V = weighted_V + e_x_mul * weighted_V
 
-        pos_x_mul = self.pos_x_mul(dist1)
+        pos_x_mul = self.pos_x_mul(dist1, e_mask2)
         weighted_V = weighted_V + pos_x_mul * weighted_V
 
         # Incorporate y to X
@@ -266,9 +277,9 @@ class NodeEdgeBlock(nn.Module):
 
         # Process y based on X and E
         y = self.y_y(y)
-        e_y = self.e_y(Y)
-        x_y = self.x_y(newX)
-        dist_y = self.dist_y(dist1)
+        e_y = self.e_y(Y, e_mask1, e_mask2)
+        x_y = self.x_y(newX, x_mask)
+        dist_y = self.dist_y(dist1, e_mask1, e_mask2)
         new_y = y + x_y + e_y + dist_y
         y_out = self.y_out(new_y)               # bs, dy
 
@@ -304,6 +315,7 @@ class GraphTransformer(nn.Module):
                                       nn.Linear(hidden_mlp_dims['X'], hidden_dims['dx']), act_fn_in)
         self.mlp_in_E = nn.Sequential(nn.Linear(input_dims.E, hidden_mlp_dims['E']), act_fn_in,
                                       nn.Linear(hidden_mlp_dims['E'], hidden_dims['de']), act_fn_in)
+
         self.mlp_in_y = nn.Sequential(nn.Linear(input_dims.y, hidden_mlp_dims['y']), act_fn_in,
                                       nn.Linear(hidden_mlp_dims['y'], hidden_dims['dy']), act_fn_in)
         self.mlp_in_pos = PositionsMLP(hidden_mlp_dims['pos'])
@@ -338,7 +350,6 @@ class GraphTransformer(nn.Module):
 
         new_E = self.mlp_in_E(data.E)
         new_E = (new_E + new_E.transpose(1, 2)) / 2
-
         features = utils.PlaceHolder(X=self.mlp_in_X(X), E=new_E, y=self.mlp_in_y(data.y), charges=None,
                                      pos=self.mlp_in_pos(data.pos, node_mask), node_mask=node_mask).mask()
 

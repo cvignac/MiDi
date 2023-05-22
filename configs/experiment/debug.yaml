@@ -5,14 +5,13 @@ general:
     wandb: 'disabled'
     sample_every_val: 1
     samples_to_generate: 4
-    samples_to_save: 1
-    chains_to_save: 1
-    remove_h: True
+    samples_to_save: 2
+    chains_to_save: 0
     number_chain_steps: 10        # Number of frames in each gif
 
     final_model_samples_to_generate: 5
-    final_model_samples_to_save: 1
-    final_model_chains_to_save: 1
+    final_model_samples_to_save: 0
+    final_model_chains_to_save: 0
 train:
     batch_size: 20
     reference_batch_size: 4

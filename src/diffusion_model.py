@@ -1,6 +1,7 @@
 import time
 import os
-from typing import Iterable
+import math
+import numpy as np
 
 import torch
 import torch.nn.functional as F
@@ -9,6 +10,8 @@ import torchmetrics
 import wandb
 
 from src.models.transformer_model import GraphTransformer
+# from src.models.egnn_ablation import GraphTransformer
+# print("RUNNING ABLATION")
 from src.diffusion.noise_model import DiscreteUniformTransition, MarginalUniformTransition
 from src.diffusion import diffusion_utils
 from src.diffusion.diffusion_utils import mask_distributions, sum_except_batch
@@ -41,14 +44,14 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
         self.node_dist = nodes_dist
         self.dataset_infos = dataset_infos
-
         self.extra_features = ExtraFeatures(cfg.model.extra_features, dataset_info=dataset_infos)
         self.input_dims = self.extra_features.update_input_dims(dataset_infos.input_dims)
         self.output_dims = dataset_infos.output_dims
         # self.domain_features = ExtraMolecularFeatures(dataset_infos=dataset_infos)
 
         # Train metrics
-        self.train_loss = TrainLoss(self.cfg.model.lambda_train)
+        self.train_loss = TrainLoss(lambda_train=self.cfg.model.lambda_train
+                                     if hasattr(self.cfg.model, "lambda_train") else self.cfg.train.lambda0)
         self.train_metrics = TrainMolecularMetrics(dataset_infos)
 
         # Val Metrics
@@ -74,8 +77,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
         if cfg.model.transition == 'uniform':
             self.noise_model = DiscreteUniformTransition(output_dims=self.output_dims,
-                                                         noise_schedule=cfg.model.diffusion_noise_schedule,
-                                                         timesteps=cfg.model.diffusion_steps)
+                                                         cfg=cfg)
         elif cfg.model.transition == 'marginal':
             print(f"Marginal distribution of the classes: nodes: {self.dataset_infos.atom_types} --"
                   f" edges: {self.dataset_infos.edge_types} -- charges: {self.dataset_infos.charges_marginals}")
@@ -84,8 +86,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
                                                          e_marginals=self.dataset_infos.edge_types,
                                                          charges_marginals=self.dataset_infos.charges_marginals,
                                                          y_classes=self.output_dims.y,
-                                                         noise_schedule=cfg.model.diffusion_noise_schedule,
-                                                         timesteps=cfg.model.diffusion_steps)
+                                                         cfg=cfg)
         else:
             assert ValueError(f"Transition type '{cfg.model.transition}' not implemented.")
 
@@ -98,15 +99,17 @@ class FullDenoisingDiffusion(pl.LightningModule):
             return
         dense_data = utils.to_dense(data, self.dataset_infos)
         z_t = self.noise_model.apply_noise(dense_data)
-        extra_data = self.compute_extra_data(z_t)
+        extra_data = self.extra_features(z_t)
         pred = self.forward(z_t, extra_data)
         loss, tl_log_dict = self.train_loss(masked_pred=pred, masked_true=dense_data,
                                             log=i % self.log_every_steps == 0)
+
         # if self.local_rank == 0:
         tm_log_dict = self.train_metrics(masked_pred=pred, masked_true=dense_data,
                                          log=i % self.log_every_steps == 0)
         if tl_log_dict is not None:
             self.log_dict(tl_log_dict, batch_size=self.BS)
+        if tm_log_dict is not None:
             self.log_dict(tm_log_dict, batch_size=self.BS)
         return loss
 
@@ -117,7 +120,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
     def validation_step(self, data, i):
         dense_data = utils.to_dense(data, self.dataset_infos)
         z_t = self.noise_model.apply_noise(dense_data)
-        extra_data = self.compute_extra_data(z_t)
+        extra_data = self.extra_features(z_t)
         pred = self.forward(z_t, extra_data)
         nll, log_dict = self.compute_val_loss(pred, z_t, clean_data=dense_data, test=False)
         return {'loss': nll}, log_dict
@@ -148,16 +151,20 @@ class FullDenoisingDiffusion(pl.LightningModule):
             self.best_val_nll = val_nll
         print('Val loss: %.4f \t Best val loss:  %.4f\n' % (val_nll, self.best_val_nll))
 
-        print(f"Sampling start on GR{self.global_rank}")
+
         self.val_counter += 1
-        if self.name == "debug" or self.val_counter % self.cfg.general.sample_every_val == 0:
+        if self.name == "debug" or (self.val_counter % self.cfg.general.sample_every_val == 0 and
+                                    self.current_epoch > 0):
+            print(f"Sampling start on GR{self.global_rank}")
             start = time.time()
-            samples = self.sample_n_graphs(samples_to_generate=self.cfg.general.samples_to_generate,
-                                           chains_to_save=self.cfg.general.chains_to_save,
-                                           samples_to_save=self.cfg.general.samples_to_save)
-            print("Computing sampling metrics...")
+            gen = self.cfg.general
+            samples = self.sample_n_graphs(samples_to_generate=math.ceil(gen.samples_to_generate / max(gen.gpus, 1)),
+                                           chains_to_save=gen.chains_to_save if self.local_rank == 0 else 0,
+                                           samples_to_save=gen.samples_to_save if self.local_rank == 0 else 0,
+                                           test=False)
+            print(f'Done on {self.local_rank}. Sampling took {time.time() - start:.2f} seconds\n')
+            print(f"Computing sampling metrics on {self.local_rank}...")
             self.val_sampling_metrics(samples, self.name, self.current_epoch, self.local_rank)
-            print(f'Done. Sampling took {time.time() - start:.2f} seconds\n')
         print(f"Val epoch end on {self.global_rank}")
 
     def on_test_epoch_start(self):
@@ -169,7 +176,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
     def test_step(self, data, i):
         dense_data = utils.to_dense(data, self.dataset_infos)
         z_t = self.noise_model.apply_noise(dense_data)
-        extra_data = self.compute_extra_data(z_t)
+        extra_data = self.extra_features(z_t)
         pred = self.forward(z_t, extra_data)
         nll, log_dict = self.compute_val_loss(pred, z_t, clean_data=dense_data, test=True)
         return {'loss': nll}, log_dict
@@ -202,7 +209,8 @@ class FullDenoisingDiffusion(pl.LightningModule):
         print(f"Samples to save: {self.cfg.general.final_model_samples_to_save}")
         samples = self.sample_n_graphs(samples_to_generate=self.cfg.general.final_model_samples_to_generate,
                                        chains_to_save=self.cfg.general.final_model_chains_to_save,
-                                       samples_to_save=self.cfg.general.final_model_samples_to_save)
+                                       samples_to_save=self.cfg.general.final_model_samples_to_save,
+                                       test=True)
         print("Saving the generated graphs")
         filename = f'generated_samples1.txt'
         for i in range(2, 10):
@@ -280,8 +288,8 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
         # Compute the kl on the positions
         last = self.T * torch.ones((bs, 1), device=clean_data.pos.device, dtype=torch.long)
-        mu_T = self.noise_model.get_alpha_bar(t_int=last)[:, :, None] * clean_data.pos
-        sigma_T = self.noise_model.get_sigma_bar(t_int=last)[:, :, None]
+        mu_T = self.noise_model.get_alpha_bar(t_int=last, key='p')[:, :, None] * clean_data.pos
+        sigma_T = self.noise_model.get_sigma_bar(t_int=last, key='p')[:, :, None]
         subspace_d = 3 * node_mask.long().sum(dim=1)[:, None, None] - 3
         kl_distance_pos = subspace_d * diffusion_utils.gaussian_KL(mu_T, sigma_T)
         return (sum_except_batch(kl_distance_X) + sum_except_batch(kl_distance_E) + sum_except_batch(kl_distance_c) +
@@ -322,7 +330,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
         prob_pred.pos = pred.pos
         # TODO Warning: prefactor is ignored -- reintroduce it for likelihood computation
         metrics = (self.test_metrics if test else self.val_metrics)(prob_pred, prob_true)
-        return self.T * (metrics['PosMSE'] + metrics['XKl'] + metrics['ChargesKl'] + metrics['EKl'])
+        return self.T * (metrics['PosMSE'] / 100 + metrics['XKl'] + metrics['ChargesKl'] + metrics['EKl'])
 
     def compute_val_loss(self, pred, z_t, clean_data, test=False):
         """Computes an estimator for the variational lower bound, or the simple loss (MSE).
@@ -360,7 +368,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
     @torch.no_grad()
     def sample_batch(self, n_nodes: list, number_chain_steps: int = 50, batch_id: int = 0, keep_chain: int = 0,
-                     save_final: int = 0):
+                     save_final: int = 0, test=True):
         """
         :param batch_id: int
         :param n_nodes: list of int containing the number of nodes to sample for each graph
@@ -374,7 +382,6 @@ class FullDenoisingDiffusion(pl.LightningModule):
         assert keep_chain >= 0
         assert save_final >= 0
         n_nodes = torch.Tensor(n_nodes).long().to(self.device)
-
         batch_size = len(n_nodes)
         n_max = torch.max(n_nodes).item()
         # Build the masks
@@ -394,7 +401,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
                                    y=None)
         z_t = z_T
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
-        for s_int in reversed(range(0, self.T)):
+        for s_int in reversed(range(0, self.T, 1 if test else self.cfg.general.faster_sampling)):
             s_array = s_int * torch.ones((batch_size, 1), dtype=torch.long, device=z_t.X.device)
 
             z_s = self.sample_zs_from_zt(z_t=z_t, s_int=s_array)
@@ -422,10 +429,10 @@ class FullDenoisingDiffusion(pl.LightningModule):
         molecule_list = []
         for i in range(batch_size):
             n = n_nodes[i]
-            atom_types = X[i, :n].cpu()
-            charge_vec = charges[i, :n].cpu()
-            edge_types = E[i, :n, :n].cpu()
-            conformer = pos[i, :n].cpu()
+            atom_types = X[i, :n]
+            charge_vec = charges[i, :n]
+            edge_types = E[i, :n, :n]
+            conformer = pos[i, :n]
             molecule_list.append(Molecule(atom_types=atom_types, charges=charge_vec,
                                           bond_types=edge_types, positions=conformer,
                                           atom_decoder=self.dataset_infos.atom_decoder))
@@ -441,7 +448,8 @@ class FullDenoisingDiffusion(pl.LightningModule):
                                         num_nodes=n_nodes[:keep_chain],
                                         atom_decoder=self.dataset_infos.atom_decoder)
 
-        print('\nVisualizing individual molecules...')
+        if save_final > 0:
+            print(f'Visualizing {save_final} individual molecules...')
 
         # Visualize the final molecules
         current_path = os.getcwd()
@@ -453,68 +461,67 @@ class FullDenoisingDiffusion(pl.LightningModule):
     def sample_zs_from_zt(self, z_t, s_int):
         """Samples from zs ~ p(zs | zt). Only used during sampling.
            if last_step, return the graph prediction as well"""
-        extra_data = self.compute_extra_data(z_t)
+        extra_data = self.extra_features(z_t)
         pred = self.forward(z_t, extra_data)
-
         z_s = self.noise_model.sample_zs_from_zt_and_pred(z_t=z_t, pred=pred, s_int=s_int)
         return z_s
 
-    def compute_extra_data(self, z_t):
-        """ At every training step (after adding noise) and step in sampling, compute extra information and append to
-            the network input. """
-        extra_features = self.extra_features(z_t)
-        extra_features.y = torch.cat((extra_features.y, z_t.t), dim=-1)
-        return extra_features
+    def sample_n_graphs(self, samples_to_generate: int, chains_to_save: int, samples_to_save: int, test: bool):
+        if samples_to_generate <= 0:
+            return []
 
-    def sample_n_graphs(self, samples_to_generate, chains_to_save, samples_to_save):
         chains_left_to_save = chains_to_save
 
         samples = []
-        n_nodes = self.node_dist.sample_n(min(samples_to_generate, samples_to_save), self.device)
-        current_max_size = 0
+        # The first graphs are sampled without sorting the sizes, so that the visualizations are not biased
+        first_sampling = min(samples_to_generate, max(samples_to_save, chains_to_save))
+        if first_sampling > 0:
+            n_nodes = self.node_dist.sample_n(first_sampling, self.device)
+            current_max_size = 0
+            current_n_list = []
+            for i, n in enumerate(n_nodes):
+                potential_max_size = max(current_max_size, n)
+                if self.cfg.dataset.adaptive_loader:
+                    potential_ebs = effective_batch_size(potential_max_size, self.cfg.train.reference_batch_size,
+                                                         sampling=True)
+                else:
+                    potential_ebs = int(1.8 * self.cfg.train.batch_size)  # No need to make a backward pass
+                if potential_ebs > len(current_n_list) or len(current_n_list) == 0:
+                    current_n_list.append(n)
+                    current_max_size = potential_max_size
+                else:
+                    chains_save = max(min(chains_left_to_save, len(current_n_list)), 0)
+                    samples.extend(self.sample_batch(n_nodes=current_n_list, batch_id=i,
+                                                     save_final=len(current_n_list), keep_chain=chains_save,
+                                                     number_chain_steps=self.number_chain_steps, test=test))
+                    chains_left_to_save -= chains_save
+                    current_n_list = [n]
+                    current_max_size = n
+            chains_save = max(min(chains_left_to_save, len(current_n_list)), 0)
+            samples.extend(self.sample_batch(n_nodes=current_n_list, batch_id=i + 1,
+                                             save_final=len(current_n_list), keep_chain=chains_save,
+                                             number_chain_steps=self.number_chain_steps, test=test))
+            if samples_to_generate - first_sampling <= 0:
+                return samples
+
+        # The remaining graphs are sampled in decreasing graph size
+        n_nodes = self.node_dist.sample_n(samples_to_generate - first_sampling, self.device)
+
+        if self.cfg.dataset.adaptive_loader:
+            n_nodes = torch.sort(n_nodes, descending=True)[0]
+        max_size = 0
         current_n_list = []
         for i, n in enumerate(n_nodes):
-            potential_max_size = max(current_max_size, n)
-            if self.cfg.dataset.adaptive_loader:
-                potential_ebs = effective_batch_size(potential_max_size, self.cfg.train.reference_batch_size,
-                                                     sampling=True)
-            else:
-                potential_ebs = int(1.8 * self.cfg.train.batch_size)  # No need to make a backward pass
+            max_size = max(max_size, n)
+            potential_ebs = effective_batch_size(max_size, self.cfg.train.reference_batch_size, sampling=True) \
+                            if self.cfg.dataset.adaptive_loader else 1.8 * self.cfg.train.batch_size
             if potential_ebs > len(current_n_list) or len(current_n_list) == 0:
                 current_n_list.append(n)
-                current_max_size = potential_max_size
             else:
-                chains_save = max(min(chains_left_to_save, len(current_n_list)), 0)
-                samples.extend(self.sample_batch(n_nodes=current_n_list, batch_id=i,
-                                                 save_final=len(current_n_list), keep_chain=chains_save,
-                                                 number_chain_steps=self.number_chain_steps))
-                chains_left_to_save -= chains_save
-                current_n_list = [n]
-                current_max_size = n
-        chains_save = max(min(chains_left_to_save, len(current_n_list)), 0)
-        samples.extend(self.sample_batch(n_nodes=current_n_list, batch_id=i + 1,
-                                         save_final=len(current_n_list), keep_chain=chains_save,
-                                         number_chain_steps=self.number_chain_steps))
-        if (samples_to_generate - samples_to_save) == 0:
-            return samples
-        n_nodes = self.node_dist.sample_n(samples_to_generate - samples_to_save, self.device)
-        n_nodes = torch.sort(n_nodes, descending=True)[0]
-        current_n_list = []
-        for i, n in enumerate(n_nodes):
-            if len(current_n_list) == 0:
-                max_size = n
-                potential_ebs = effective_batch_size(max_size, self.cfg.train.reference_batch_size, sampling=True) \
-                    if self.cfg.dataset.adaptive_loader else int(1.8 * self.cfg.train.batch_size)
-                current_n_list.append(n)
-            elif potential_ebs > len(current_n_list):
-                current_n_list.append(n)
-            else:
-                samples.extend(self.sample_batch(n_nodes=current_n_list))
+                samples.extend(self.sample_batch(n_nodes=current_n_list, test=test))
                 current_n_list = [n]
                 max_size = n
-                potential_ebs = effective_batch_size(max_size, self.cfg.train.reference_batch_size, sampling=True) \
-                    if self.cfg.dataset.adaptive_loader else int(1.8 * self.cfg.train.batch_size)
-        samples.extend(self.sample_batch(n_nodes=current_n_list))
+        samples.extend(self.sample_batch(n_nodes=current_n_list, test=test))
 
         return samples
 
@@ -527,9 +534,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
         model_input = z_t.copy()
         model_input.X = torch.cat((z_t.X, extra_data.X), dim=2).float()
         model_input.E = torch.cat((z_t.E, extra_data.E), dim=3).float()
-        model_input.y = torch.hstack((z_t.y, extra_data.y)).float()
-        if model_input.y.shape[-1] == 0:
-            model_input.y = torch.zeros((model_input.y.shape[0], 1), device=model_input.y.device, dtype=torch.float)
+        model_input.y = torch.hstack((z_t.y, extra_data.y, z_t.t)).float()
         return self.model(model_input)
 
     def on_train_epoch_end(self) -> None:
@@ -538,7 +543,8 @@ class FullDenoisingDiffusion(pl.LightningModule):
         self.log_dict(tle_log, batch_size=self.BS)
         # if self.local_rank == 0:
         tme_log = self.train_metrics.log_epoch_metrics(self.current_epoch, self.local_rank)
-        self.log_dict(tme_log, batch_size=self.BS)
+        if tme_log is not None:
+            self.log_dict(tme_log, batch_size=self.BS)
 
     def on_train_epoch_start(self) -> None:
         print("Starting epoch on local rank", self.local_rank)

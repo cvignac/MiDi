@@ -2,7 +2,7 @@ import torch
 from torch.nn import functional as F
 import numpy as np
 import math
-
+import matplotlib.pyplot as plt
 from src.utils import PlaceHolder, remove_mean_with_mask
 
 
@@ -11,7 +11,7 @@ def sum_except_batch(x):
 
 
 def assert_correctly_masked(variable, node_mask):
-    assert not torch.isnan(variable).any()
+    assert not torch.isnan(variable).any(), f"Shape:{variable.shape}"
     assert (variable * (1 - node_mask.long())).abs().max().item() < 1e-4, \
         f'Variables not masked properly. {variable * (1 - node_mask.long())}'
 
@@ -65,16 +65,30 @@ def cosine_beta_schedule(timesteps, s=0.008, raise_to_power: float = 1):
     return alphas_cumprod
 
 
-def cosine_beta_schedule_discrete(timesteps, s=0.008):
+def cosine_beta_schedule_discrete(timesteps, nu_arr, s=0.008):
     """ Cosine schedule as proposed in https://openreview.net/forum?id=-NEXDKk8gZ. """
     steps = timesteps + 2
     x = np.linspace(0, steps, steps)
+    x = np.expand_dims(x, 0)  # ((1, steps))
 
-    alphas_cumprod = np.cos(0.5 * np.pi * ((x / steps) + s) / (1 + s)) ** 2
-    alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
-    alphas = (alphas_cumprod[1:] / alphas_cumprod[:-1])
-    betas = 1 - alphas
-    return betas.squeeze()
+    nu_arr = np.array(nu_arr)  # (components, )  # X, charges, E, y, pos
+    nu_arr = np.expand_dims(nu_arr, 1)  # ((components, 1))
+
+    alphas_cumprod = np.cos(0.5 * np.pi * (((x / steps) ** nu_arr) + s) / (1 + s)) ** 2  # ((components, steps))
+    # divide every element of alphas_cumprod by the first element of alphas_cumprod
+    alphas_cumprod_new = alphas_cumprod / np.expand_dims(alphas_cumprod[:, 0], 1)
+    # remove the first element of alphas_cumprod and then multiply every element by the one before it
+    alphas = (alphas_cumprod_new[:, 1:] / alphas_cumprod_new[:, :-1])
+
+    betas = 1 - alphas  # ((components, steps)) # X, charges, E, y, pos
+    betas = np.swapaxes(betas, 0, 1)
+    # plt.figure()
+    # plt.plot(x[0, 1:], alphas[-1, ...], label='alpha')
+    # plt.plot(x[0, 1:], betas[..., -1], label='betas')
+    # plt.plot(x[0, ], alphas_cumprod[-1, ...], label='alpha_bar')
+    # plt.show()
+    # assert False
+    return betas
 
 
 def gaussian_KL(q_mu, q_sigma):

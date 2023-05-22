@@ -6,7 +6,6 @@ import wandb
 from torchmetrics import MeanSquaredError
 from src.metrics.abstract_metrics import CrossEntropyMetric
 
-
 class TrainLoss(nn.Module):
     """ Train with Cross entropy"""
     def __init__(self, lambda_train):
@@ -16,6 +15,7 @@ class TrainLoss(nn.Module):
         self.charges_loss = CrossEntropyMetric()
         self.edge_loss = CrossEntropyMetric()
         self.y_loss = CrossEntropyMetric()
+
         self.lambda_train = lambda_train
 
     def forward(self, masked_pred, masked_true, log: bool):
@@ -28,19 +28,19 @@ class TrainLoss(nn.Module):
         node_mask = masked_true.node_mask
         bs, n = node_mask.shape
 
-        true_pos = masked_true.pos[node_mask]
-        masked_pred_pos = masked_pred.pos[node_mask]
+        true_pos = masked_true.pos[node_mask]       # q x 3
+        masked_pred_pos = masked_pred.pos[node_mask]        # q x 3
 
-        true_X = masked_true.X[node_mask]
-        masked_pred_X = masked_pred.X[node_mask]
+        true_X = masked_true.X[node_mask]       # q x 4
+        masked_pred_X = masked_pred.X[node_mask]        # q x 4
 
-        true_charges = masked_true.charges[node_mask]
-        masked_pred_charges = masked_pred.charges[node_mask]
+        true_charges = masked_true.charges[node_mask]       # q x 3
+        masked_pred_charges = masked_pred.charges[node_mask]        # q x 3
 
         diag_mask = ~torch.eye(n, device=node_mask.device, dtype=torch.bool).unsqueeze(0).repeat(bs, 1, 1)
         edge_mask = diag_mask & node_mask.unsqueeze(-1) & node_mask.unsqueeze(-2)
-        masked_pred_E = masked_pred.E[edge_mask]
-        true_E = masked_true.E[edge_mask]
+        masked_pred_E = masked_pred.E[edge_mask]        # r x 5
+        true_E = masked_true.E[edge_mask]       # r x 5
 
         # Check that the masking is correct
         assert (true_X != 0.).any(dim=-1).all()
@@ -49,8 +49,8 @@ class TrainLoss(nn.Module):
 
         loss_pos = self.train_pos_mse(masked_pred_pos, true_pos) if true_X.numel() > 0 else 0.0
         loss_X = self.node_loss(masked_pred_X, true_X) if true_X.numel() > 0 else 0.0
-        loss_E = self.edge_loss(masked_pred_E, true_E) if true_E.numel() > 0 else 0.0
         loss_charges = self.charges_loss(masked_pred_charges, true_charges) if true_charges.numel() > 0 else 0.0
+        loss_E = self.edge_loss(masked_pred_E, true_E) if true_E.numel() > 0 else 0.0
         loss_y = self.y_loss(masked_pred.y, masked_true.y) if masked_true.y.numel() > 0 else 0.0
 
         batch_loss = (self.lambda_train[0] * loss_pos + self.lambda_train[1] * loss_X +
@@ -92,6 +92,3 @@ class TrainLoss(nn.Module):
         if wandb.run:
             wandb.log(to_log, commit=False)
         return to_log
-
-
-

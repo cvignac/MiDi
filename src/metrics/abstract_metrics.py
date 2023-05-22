@@ -158,4 +158,3 @@ class ELogP(SumExceptBatchMetric):
 class YLogP(SumExceptBatchMetric):
     def update(self, preds, target):
         super().update(target.y * preds.y.log())
-
