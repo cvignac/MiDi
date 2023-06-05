@@ -319,18 +319,15 @@ class FullDenoisingDiffusion(pl.LightningModule):
         prob_pred = diffusion_utils.mask_distributions(prob_pred, node_mask)
 
         # Compute the prefactor for KL on the positions
-        # nm = self.noise_model
-        # prefactor = ((nm.get_alpha_bar(t_int=s_int) / (nm.get_sigma_bar(t_int=s_int) + 1e-6)) ** 2 -
-        #              (nm.get_alpha_bar(t_int=t_int) / (nm.get_sigma_bar(t_int=t_int) + 1e-6)) ** 2)
-        # prefactor[torch.isnan(prefactor)] = 1
-        # prefactor = torch.sqrt(0.5 * prefactor).unsqueeze(-1)
-        # prob_true.pos = prefactor * clean_data.pos
-        # prob_pred.pos = prefactor * pred.pos
-        prob_true.pos = clean_data.pos
-        prob_pred.pos = pred.pos
-        # TODO Warning: prefactor is ignored -- reintroduce it for likelihood computation
+        nm = self.noise_model
+        prefactor = ((nm.get_alpha_bar(t_int=s_int) / (nm.get_sigma_bar(t_int=s_int) + 1e-6)) ** 2 -
+                     (nm.get_alpha_bar(t_int=t_int) / (nm.get_sigma_bar(t_int=t_int) + 1e-6)) ** 2)
+        prefactor[torch.isnan(prefactor)] = 1
+        prefactor = torch.sqrt(0.5 * prefactor).unsqueeze(-1)
+        prob_true.pos = prefactor * clean_data.pos
+        prob_pred.pos = prefactor * pred.pos
         metrics = (self.test_metrics if test else self.val_metrics)(prob_pred, prob_true)
-        return self.T * (metrics['PosMSE'] / 100 + metrics['XKl'] + metrics['ChargesKl'] + metrics['EKl'])
+        return self.T * (metrics['PosMSE'] + metrics['XKl'] + metrics['ChargesKl'] + metrics['EKl'])
 
     def compute_val_loss(self, pred, z_t, clean_data, test=False):
         """Computes an estimator for the variational lower bound, or the simple loss (MSE).

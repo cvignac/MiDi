@@ -12,7 +12,7 @@ Clément Vignac, Nagham Osman, Laura Toni, Pascal Frossard
 - `conda install -c "nvidia/label/cuda-11.3.1" cuda-nvcc`     -- the precise version depends on your cuda version
 - conda install pytorch 
 - try the import `import torch`
-  - `pip install wandb`
+- `pip install wandb`
 - `conda install pyg -c pyg`
 - try the previous import + `from torch_geometric.data import Data`
 - `pip install pytorch-lightning==1.6.5`

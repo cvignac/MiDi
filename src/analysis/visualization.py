@@ -137,7 +137,7 @@ def visualize_chains(path, chain, atom_decoder, num_nodes):
         gif_path = os.path.join(os.path.dirname(path), f"{path.split('/')[-1]}_{i}.gif")
         print(f'Saving the gif at {gif_path}.')
         imgs.extend([imgs[-1]] * 10)
-        imageio.mimsave(gif_path, imgs, subrectangles=True, fps=5)
+        imageio.mimsave(gif_path, imgs, subrectangles=True, duration=200)
 
         if wandb.run:
             wandb.log({"chain": wandb.Video(gif_path, fps=5, format="gif")}, commit=True)

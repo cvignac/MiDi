@@ -193,7 +193,7 @@ class QM9DataModule(AbstractDataModule):
         self.statistics = {'train': train_dataset.statistics, 'val': val_dataset.statistics,
                            'test': test_dataset.statistics}
         self.remove_h = cfg.dataset.remove_h
-        super().__init__(cfg, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=val_dataset)
+        super().__init__(cfg, train_dataset=train_dataset, val_dataset=val_dataset, test_dataset=test_dataset)
 
 
 class QM9infos(AbstractDatasetInfos):

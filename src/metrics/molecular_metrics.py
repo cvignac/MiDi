@@ -690,7 +690,6 @@ class TrainMolecularMetrics(nn.Module):
         return to_log
 
 
-
 if __name__ == '__main__':
     # Do not move these imports, the order seems to matter
     from rdkit import Chem

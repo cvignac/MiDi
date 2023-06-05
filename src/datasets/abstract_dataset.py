@@ -3,7 +3,10 @@ from typing import Optional
 
 import torch
 from src.datasets.adaptive_loader import AdaptiveLightningDataset
-from torch_geometric.data import LightningDataset
+try:
+    from torch_geometric.data import LightningDataset
+except ImportError:
+    from torch_geometric.data.lightning import LightningDataset
 from src.diffusion.distributions import DistributionNodes
 
 def maybe_subset(ds,random_subset:Optional[float]=None,split=None)->torch.utils.data.Dataset:

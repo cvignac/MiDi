@@ -8,7 +8,10 @@ from torch_geometric.data.data import BaseData
 from torch.utils.data.dataloader import default_collate
 import torch.utils.data
 from torch_geometric.loader import DataLoader
-from torch_geometric.data import LightningDataset
+try:
+    from torch_geometric.data import LightningDataset
+except ImportError:
+    from torch_geometric.data.lightning import LightningDataset
 
 
 def effective_batch_size(max_size, reference_batch_size, reference_size=20, sampling=False):
