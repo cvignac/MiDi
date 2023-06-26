@@ -320,8 +320,9 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
         # Compute the prefactor for KL on the positions
         nm = self.noise_model
-        prefactor = ((nm.get_alpha_bar(t_int=s_int) / (nm.get_sigma_bar(t_int=s_int) + 1e-6)) ** 2 -
-                     (nm.get_alpha_bar(t_int=t_int) / (nm.get_sigma_bar(t_int=t_int) + 1e-6)) ** 2)
+        prefactor = ((nm.get_alpha_bar(t_int=s_int, key='p') / (nm.get_sigma_bar(t_int=s_int, key='p') + 1e-6)) ** 2 -
+                     (nm.get_alpha_bar(t_int=t_int, key='p') / (nm.get_sigma_bar(t_int=t_int, key='p') + 1e-6)) ** 2)
+
         prefactor[torch.isnan(prefactor)] = 1
         prefactor = torch.sqrt(0.5 * prefactor).unsqueeze(-1)
         prob_true.pos = prefactor * clean_data.pos
@@ -353,7 +354,6 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
         # Combine terms
         nlls = - log_pN + kl_prior + loss_all_t
-
         # Update NLL metric object and return batch nll
         nll = (self.test_nll if test else self.val_nll)(nlls)        # Average over the batch
 

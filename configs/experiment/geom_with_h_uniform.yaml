@@ -4,7 +4,7 @@ general:
     gpus : 1
     wandb: 'online'
     test_only: null
-    resume: '/scratch/uceeosm/MiDi/outputs/2023-04-21/14-00-42-geom-with-h-uniform/checkpoints/geom-with-h-uniform/epoch=124.ckpt'
+    resume: null
 train:
     n_epochs: 500
     batch_size: 200

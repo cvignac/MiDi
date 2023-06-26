@@ -198,7 +198,7 @@ class NoiseModel:
     def apply_noise(self, dense_data):
         """ Sample noise and apply it to the data. """
         device = dense_data.X.device
-        t_int = torch.randint(0, self.T + 1, size=(dense_data.X.size(0), 1), device=device)
+        t_int = torch.randint(1, self.T + 1, size=(dense_data.X.size(0), 1), device=device)
         t_float = t_int.float() / self.T
 
         # Qtb returns two matrices of shape (bs, dx_in, dx_out) and (bs, de_in, de_out)

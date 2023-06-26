@@ -3,7 +3,7 @@ general:
     name : 'qm9-h-uniform'
     gpus : 1
     wandb: 'online'
-    test_only: '/home/uceeosm/profile.V6/Desktop/MiDi/outputs/2023-04-21/qm9_with_h_uniform/checkpoints/qm9_h_uniform.ckpt'
+    test_only: null
     num_final_sampling: 5
     final_model_samples_to_generate: 10000
     final_model_samples_to_save: 10

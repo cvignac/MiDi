@@ -4,7 +4,7 @@ general:
     gpus : 2
     wandb: 'online'
     test_only: null
-    resume: '/scratch/uceeosm/MiDi/outputs/2023-04-18/16-10-36-geom-with-h-adaptive/checkpoints/geom-with-h-adaptive/last-v1.ckpt'
+    resume: null
 train:
     n_epochs: 1000
     batch_size: 200

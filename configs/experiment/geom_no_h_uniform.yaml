@@ -3,7 +3,7 @@ general:
     name : 'geom-no-h-uniform-sampling'
     gpus : 1
     wandb: 'online'
-    test_only: '/scratch/uceeosm/MiDi/outputs/2023-04-18/13-36-05-geom-no-h-uniform-5/checkpoints/geom-no-h-uniform-5_resume/last-v1.ckpt'
+    test_only: null
     evaluate_all_checkpoints: False
     final_model_samples_to_generate: 10000
     final_model_samples_to_save: 10

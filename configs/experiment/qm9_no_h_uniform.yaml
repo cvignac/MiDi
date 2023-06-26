@@ -3,7 +3,7 @@ general:
     name : 'noh_uni3'
     gpus : 1
     wandb: 'online'
-    test_only: '/home/vignac/MoleculeDiffusion/outputs/2023-04-14/16-03-50-noh_uni2/checkpoints/noh_uni2/epoch=1934.ckpt'
+    test_only: null
     resume: null
     evaluate_all_checkpoints: False
 train:
