@@ -4,7 +4,7 @@ from torch import Tensor
 from torch.nn import functional as F
 from torchmetrics import Metric, MeanSquaredError
 
-from src.utils import PlaceHolder
+from midi.utils import PlaceHolder
 
 # TODO: these full check updates are probably not necessary
 

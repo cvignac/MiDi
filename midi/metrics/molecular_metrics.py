@@ -10,10 +10,10 @@ import numpy as np
 import wandb
 from torchmetrics import MeanMetric, MaxMetric
 
-from src.utils import NoSyncMetric as Metric, NoSyncMetricCollection as MetricCollection
-from src.analysis.rdkit_functions import check_stability
-from src.utils import NoSyncMAE as MeanAbsoluteError
-from src.metrics.metrics_utils import counter_to_tensor, wasserstein1d, total_variation1d
+from midi.utils import NoSyncMetric as Metric, NoSyncMetricCollection as MetricCollection
+from midi.analysis.rdkit_functions import check_stability
+from midi.utils import NoSyncMAE as MeanAbsoluteError
+from midi.metrics.metrics_utils import counter_to_tensor, wasserstein1d, total_variation1d
 
 
 class SamplingMetrics(nn.Module):
@@ -700,9 +700,9 @@ if __name__ == '__main__':
     import hydra
     import omegaconf
 
-    from src.datasets import qm9_dataset, geom_dataset
-    from src.utils import setup_wandb
-    from src.analysis.rdkit_functions import Molecule
+    from midi.datasets import qm9_dataset, geom_dataset
+    from midi.utils import setup_wandb
+    from midi.analysis.rdkit_functions import Molecule
 
     @hydra.main(version_base='1.3', config_path='../../configs', config_name='config')
     def main(cfg: omegaconf.DictConfig):

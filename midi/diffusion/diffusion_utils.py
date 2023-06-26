@@ -3,7 +3,7 @@ from torch.nn import functional as F
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from src.utils import PlaceHolder, remove_mean_with_mask
+from midi.utils import PlaceHolder, remove_mean_with_mask
 
 
 def sum_except_batch(x):

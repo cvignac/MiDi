@@ -13,11 +13,11 @@ import argparse
 from torch_geometric.data import InMemoryDataset, DataLoader
 from hydra.utils import get_original_cwd
 
-from src.utils import PlaceHolder
-import src.datasets.dataset_utils as dataset_utils
-from src.datasets.dataset_utils import load_pickle, save_pickle
-from src.datasets.abstract_dataset import AbstractDatasetInfos, AbstractAdaptiveDataModule
-from src.metrics.metrics_utils import compute_all_statistics
+from midi.utils import PlaceHolder
+import midi.datasets.dataset_utils as dataset_utils
+from midi.datasets.dataset_utils import load_pickle, save_pickle
+from midi.datasets.abstract_dataset import AbstractDatasetInfos, AbstractAdaptiveDataModule
+from midi.metrics.metrics_utils import compute_all_statistics
 
 
 full_atom_encoder = {'H': 0, 'B': 1, 'C': 2, 'N': 3, 'O': 4, 'F': 5, 'Al': 6, 'Si': 7,

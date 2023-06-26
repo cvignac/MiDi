@@ -3,8 +3,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 
-import src.utils as utils
-from src.diffusion import diffusion_utils
+import midi.utils as utils
+from midi.diffusion import diffusion_utils
 
 
 class NoiseModel:

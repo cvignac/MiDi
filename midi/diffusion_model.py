@@ -9,21 +9,21 @@ import pytorch_lightning as pl
 import torchmetrics
 import wandb
 
-from src.models.transformer_model import GraphTransformer
-# from src.models.egnn_ablation import GraphTransformer
+from midi.models.transformer_model import GraphTransformer
+# from midi.models.egnn_ablation import GraphTransformer
 # print("RUNNING ABLATION")
-from src.diffusion.noise_model import DiscreteUniformTransition, MarginalUniformTransition
-from src.diffusion import diffusion_utils
-from src.diffusion.diffusion_utils import mask_distributions, sum_except_batch
-from src.metrics.train_metrics import TrainLoss
-from src.metrics.abstract_metrics import SumExceptBatchMetric, SumExceptBatchKL, NLL
-from src import utils
-import src.analysis.visualization as visualizer
-import src.metrics.abstract_metrics as custom_metrics
-from src.metrics.molecular_metrics import TrainMolecularMetrics, SamplingMetrics
-from src.diffusion.extra_features import ExtraFeatures
-from src.analysis.rdkit_functions import Molecule
-from src.datasets.adaptive_loader import effective_batch_size
+from midi.diffusion.noise_model import DiscreteUniformTransition, MarginalUniformTransition
+from midi.diffusion import diffusion_utils
+from midi.diffusion.diffusion_utils import mask_distributions, sum_except_batch
+from midi.metrics.train_metrics import TrainLoss
+from midi.metrics.abstract_metrics import SumExceptBatchMetric, SumExceptBatchKL, NLL
+from midi import utils
+import midi.analysis.visualization as visualizer
+import midi.metrics.abstract_metrics as custom_metrics
+from midi.metrics.molecular_metrics import TrainMolecularMetrics, SamplingMetrics
+from midi.diffusion.extra_features import ExtraFeatures
+from midi.analysis.rdkit_functions import Molecule
+from midi.datasets.adaptive_loader import effective_batch_size
 
 
 class FullDenoisingDiffusion(pl.LightningModule):

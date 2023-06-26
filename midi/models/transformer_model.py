@@ -10,9 +10,9 @@ from torch.nn.modules.normalization import LayerNorm
 from torch.nn import functional as F
 from torch import Tensor
 
-import src.utils as utils
-from src.diffusion import diffusion_utils
-from src.models.layers import Xtoy, Etoy, SE3Norm, PositionsMLP, masked_softmax, EtoX, SetNorm, GraphNorm
+import midi.utils as utils
+from midi.diffusion import diffusion_utils
+from midi.models.layers import Xtoy, Etoy, SE3Norm, PositionsMLP, masked_softmax, EtoX, SetNorm, GraphNorm
 
 
 class XEyTransformerLayer(nn.Module):

@@ -5,22 +5,30 @@ Clément Vignac, Nagham Osman, Laura Toni, Pascal Frossard
 
 ## Installation
 
-- Create a new conda environment for python 3.9
-- Install rdkit: `conda create -c conda-forge -n MoleculeDiffusion rdkit python=3.9`
-- `conda activate MoleculeDiffusion`
-- try the import `from rdkit import Chem`
-- `conda install -c "nvidia/label/cuda-11.3.1" cuda-nvcc`     -- the precise version depends on your cuda version
-- conda install pytorch 
-- try the import `import torch`
-- `pip install wandb`
-- `conda install pyg -c pyg`
-- try the previous import + `from torch_geometric.data import Data`
-- `pip install pytorch-lightning==1.6.5`
-- try the previous imports + `import pytorch_lightning as pl`
-- `pip install ray ray-lightning`
-- try the previous imports + `import ray-lightning`
-- `pip install -r requirements.txt`
-- `pip install -e .`
+This code was tested with PyTorch 2.0.1, cuda 11.8 and torch_geometrics 2.3.1
+
+  - Download anaconda/miniconda if needed
+  - Create a rdkit environment that directly contains rdkit:
+    
+    ```conda create -c conda-forge -n midi rdkit=2023.03.2 python=3.9```
+  - `conda activate midi`
+  - Check that this line does not return an error:
+    
+    ``` python3 -c 'from rdkit import Chem' ```
+  - Install the nvcc drivers for your cuda version. For example:
+    
+    ```conda install -c "nvidia/label/cuda-11.8.0" cuda```
+  - Install a corresponding version of pytorch, for example: 
+    
+    ```pip3 install torch --index-url https://download.pytorch.org/whl/cu118```
+  - Install other packages using the requirement file: 
+    
+    ```pip install -r requirements.txt```
+
+  - Run:
+    
+    ```pip install -e .```
+
 
 
 ## Datasets
@@ -126,6 +134,17 @@ Check `qm9_dataset.py` and `geom_dataset.py` for examples.
 
 Once the dataset file is written, the code in main.py can be adapted to handle the new dataset, and a new file can be added in `configs/dataset`.
 
+## Use OpenBabel for baseline results
+
+- In this work, we use Open Babel GUI for bond prediction.
+- Install OpenBabel that corresponds to the machine you have. You can download it using the following [link](https://openbabel.org/wiki/Category:Installation).
+- For the input format, you need to choose "xyz -- XYZ cartesian coordinates format".
+- For the output format, you need to choose "sdf -- MDL MOL format".
+- In the additional instructions window, write the word "end" in the section "Add or replace molecule title".
+- Choose all the xyz files you want to do the bond prediction for in the input section
+- Choose the directory where you want to save the output file, then click on Convert.
+- You can then use the function `open_babel_preprocess` in `midi/analysis/baselines_evaluation`.
+  This function converts the molecules into the Molecule class object and append them into the all_mols list. 
 
 ## Cite this paper
 

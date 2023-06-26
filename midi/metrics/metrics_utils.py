@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 import torch.nn.functional as F
-from src.datasets.dataset_utils import Statistics
+from midi.datasets.dataset_utils import Statistics
 from torchmetrics import MeanAbsoluteError
 
 

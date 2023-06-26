@@ -12,11 +12,11 @@ import pandas as pd
 from torch_geometric.data import Data, InMemoryDataset, download_url, extract_zip
 from hydra.utils import get_original_cwd
 
-from src.datasets.dataset_utils import mol_to_torch_geometric, remove_hydrogens, Statistics
-from src.datasets.dataset_utils import load_pickle, save_pickle
-from src.datasets.abstract_dataset import AbstractDatasetInfos, AbstractDataModule, AbstractAdaptiveDataModule
-from src.metrics.metrics_utils import compute_all_statistics
-from src.utils import PlaceHolder
+from midi.datasets.dataset_utils import mol_to_torch_geometric, remove_hydrogens, Statistics
+from midi.datasets.dataset_utils import load_pickle, save_pickle
+from midi.datasets.abstract_dataset import AbstractDatasetInfos, AbstractDataModule, AbstractAdaptiveDataModule
+from midi.metrics.metrics_utils import compute_all_statistics
+from midi.utils import PlaceHolder
 
 
 def files_exist(files) -> bool:

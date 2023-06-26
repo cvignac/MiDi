@@ -14,7 +14,7 @@ from rdkit.Geometry import Point3D
 from rdkit import RDLogger
 from sklearn.decomposition import PCA
 
-from src.analysis.rdkit_functions import Molecule
+from midi.analysis.rdkit_functions import Molecule
 
 
 def visualize(path: str, molecules: list, num_molecules_to_visualize: int, log='graph', conformer2d=None,
