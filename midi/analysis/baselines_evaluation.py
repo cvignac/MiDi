@@ -4,6 +4,21 @@ import glob
 
 from src.analysis.rdkit_functions import Molecule
 
+# Do not move these imports, the order seems to matter
+from rdkit import Chem
+import torch
+import pytorch_lightning as pl
+import torch_geometric
+
+import hydra
+import omegaconf
+
+from midi.datasets import qm9_dataset, geom_dataset
+from midi.utils import setup_wandb
+from midi.analysis.rdkit_functions import Molecule
+from midi.metrics.molecular_metrics import SamplingMetrics
+
+
 atom_encoder_dict = {'qm9_with_h': {'H': 0, 'C': 1, 'N': 2, 'O': 3, 'F': 4},
                      'qm9_no_h': {'C': 0, 'N': 1, 'O': 2, 'F': 3},
                      'geom_with_h': {'H': 0, 'B': 1, 'C': 2, 'N': 3, 'O': 4, 'F': 5, 'Al': 6, 'Si': 7,'P': 8,
@@ -170,6 +185,11 @@ def data_atom_xyz(path, name, dataset_info):
 
 
 def open_babel_preprocess(file, name):
+    """
+    :param file: str
+    :param name: 'qm9_with_h', 'qm9_no_h, 'geom_with_h', 'geom_no_h'
+    :return:
+    """
     atom_encoder = atom_encoder_dict[name]
     atom_decoder = atom_decoder_dict[name]
 
@@ -235,3 +255,36 @@ def open_babel_preprocess(file, name):
         all_mols.append(molecule)
 
     return all_mols
+
+
+@hydra.main(version_base='1.3', config_path='../../configs', config_name='config')
+def open_babel_eval(cfg: omegaconf.DictConfig, file: str = None):
+    dataset_config = cfg.dataset
+    pl.seed_everything(cfg.train.seed)
+
+    assert cfg.train.batch_size == 1
+    setup_wandb(cfg)
+
+    if dataset_config.name in ['qm9', "geom"]:
+        if dataset_config.name == 'qm9':
+            datamodule = qm9_dataset.QM9DataModule(cfg)
+            dataset_infos = qm9_dataset.QM9infos(datamodule=datamodule, cfg=cfg)
+
+        else:
+            datamodule = geom_dataset.GeomDataModule(cfg)
+            dataset_infos = geom_dataset.GeomInfos(datamodule=datamodule, cfg=cfg)
+
+    else:
+        raise NotImplementedError("Unknown dataset {}".format(cfg["dataset"]))
+
+    train_smiles = list(datamodule.train_dataloader().dataset.smiles)
+    sampling_metrics = SamplingMetrics(train_smiles=train_smiles, dataset_infos=dataset_infos, test=True)
+
+    name = dataset_config.name + ("_no_h" if cfg.dataset.remove_h else "_with_h")
+
+    open_babel_mols = open_babel_preprocess(file, name)
+
+    sampling_metrics(molecules=open_babel_mols, name='openbabel', current_epoch=-1, local_rank=0)
+
+
+open_babel_eval(file=None)

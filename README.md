@@ -140,11 +140,10 @@ Once the dataset file is written, the code in main.py can be adapted to handle t
 - Install OpenBabel that corresponds to the machine you have. You can download it using the following [link](https://openbabel.org/wiki/Category:Installation).
 - For the input format, you need to choose "xyz -- XYZ cartesian coordinates format".
 - For the output format, you need to choose "sdf -- MDL MOL format".
-- In the additional instructions window, write the word "end" in the section "Add or replace molecule title".
+- In the additional instructi   ons window, write the word "end" in the section "Add or replace molecule title".
 - Choose all the xyz files you want to do the bond prediction for in the input section
 - Choose the directory where you want to save the output file, then click on Convert.
-- You can then use the function `open_babel_preprocess` in `midi/analysis/baselines_evaluation`.
-  This function converts the molecules into the Molecule class object and append them into the all_mols list. 
+- You can then use the function `open_babel_eval` in `midi/analysis/baselines_evaluation` which requires the path as argument.
 
 ## Cite this paper
 
