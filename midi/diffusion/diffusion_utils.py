@@ -17,7 +17,7 @@ def assert_correctly_masked(variable, node_mask):
 
 
 def sample_gaussian_with_mask(size, node_mask):
-    x = torch.randn(size).to(node_mask)
+    x = torch.randn(size).to(node_mask.device)
     x_masked = x * node_mask
     return x_masked
 

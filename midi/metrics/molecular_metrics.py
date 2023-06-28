@@ -69,6 +69,7 @@ class SamplingMetrics(nn.Module):
                     smiles = Chem.MolToSmiles(largest_mol)
                     valid.append(smiles)
                     all_smiles.append(smiles)
+                    error_message[-1] += 1
                 except Chem.rdchem.AtomValenceException:
                     error_message[1] += 1
                     # print("Valence error in GetmolFrags")
@@ -78,7 +79,7 @@ class SamplingMetrics(nn.Module):
                 except Chem.rdchem.AtomKekulizeException or ValueError:
                     error_message[3] += 1
         print(f"Error messages: AtomValence {error_message[1]}, Kekulize {error_message[2]}, other {error_message[3]}, "
-              f" -- No error {len(generated) - sum(error_message.values())} / {len(generated)}")
+              f" -- No error {error_message[-1]}")
         self.validity_metric.update(value=len(valid) / len(generated), weight=len(generated))
         num_components = torch.tensor(num_components, device=self.mean_components.device)
         self.mean_components.update(num_components)
@@ -113,16 +114,15 @@ class SamplingMetrics(nn.Module):
                 self.novelty.update(value=len(novel) / len(unique), weight=len(unique))
             novelty = self.novelty.compute()
 
-        if local_rank == 0:
-            num_molecules = int(self.validity_metric.weight.item())
-            print(f"Validity over {num_molecules} molecules:"
-                  f" {validity * 100 :.2f}%")
-            print(f"Number of connected components of {num_molecules} molecules: "
-                  f"mean:{mean_components:.2f} max:{max_components:.2f}")
-            print(f"Connected components of {num_molecules} molecules: "
-                  f"{connected_components:.2f}")
-            print(f"Uniqueness: {uniqueness * 100 :.2f}% WARNING: do not trust this metric on multi-gpu")
-            print(f"Novelty: {novelty * 100 :.2f}%")
+        num_molecules = int(self.validity_metric.weight.item())
+        print(f"Validity over {num_molecules} molecules:"
+              f" {validity * 100 :.2f}%")
+        print(f"Number of connected components of {num_molecules} molecules: "
+              f"mean:{mean_components:.2f} max:{max_components:.2f}")
+        print(f"Connected components of {num_molecules} molecules: "
+              f"{connected_components:.2f}")
+        print(f"Uniqueness: {uniqueness * 100 :.2f}% WARNING: do not trust this metric on multi-gpu")
+        print(f"Novelty: {novelty * 100 :.2f}%")
 
         if wandb.run:
             dic = {'Validity': validity,
@@ -181,7 +181,7 @@ class SamplingMetrics(nn.Module):
         edge_types_tv, bond_tv_per_class, sparsity_level = bond_types_distance(molecules,
                                                                                stat.bond_types,
                                                                                save_histogram=self.test)
-        print(f"Sparsity level: {int(100 * sparsity_level)} %")
+        print(f"Sparsity level on local rank {local_rank}: {int(100 * sparsity_level)} %")
         self.edge_types_tv(edge_types_tv)
         charge_w1, charge_w1_per_class = charge_distance(molecules, stat.charge_types, stat.atom_types,
                                                          self.dataset_infos)
@@ -192,7 +192,8 @@ class SamplingMetrics(nn.Module):
         bond_lengths_w1, bond_lengths_w1_per_type = bond_length_distance(molecules, stat.bond_lengths, stat.bond_types)
         self.bond_lengths_w1(bond_lengths_w1)
         if sparsity_level < 0.7:
-            print(f"Too many edges, skipping angle distance computation.")
+            if local_rank == 0:
+                print(f"Too many edges, skipping angle distance computation.")
             angles_w1 = 0
             angles_w1_per_type = [-1] *  len(self.dataset_infos.atom_decoder)
         else:
@@ -207,7 +208,8 @@ class SamplingMetrics(nn.Module):
                   'sampling/ValencyW1': self.valency_w1.compute(),
                   'sampling/BondLengthsW1': self.bond_lengths_w1.compute(),
                   'sampling/AnglesW1': self.angles_w1.compute()}
-        print(f"Sampling metrics", {key: round(val.item(), 3) for key, val in to_log.items()}, "on", local_rank)
+        if local_rank == 0:
+            print(f"Sampling metrics", {key: round(val.item(), 3) for key, val in to_log.items()})
 
         for i, atom_type in enumerate(self.dataset_infos.atom_decoder):
             to_log[f'sampling_per_class/{atom_type}_TV'] = atom_tv_per_class[i].item()
@@ -223,7 +225,8 @@ class SamplingMetrics(nn.Module):
 
         if wandb.run:
             wandb.log(to_log, commit=False)
-        print(f"Sampling metrics done on {local_rank}.")
+        if local_rank == 0:
+            print(f"Sampling metrics done.")
         self.reset()
 
 def number_nodes_distance(molecules, dataset_counts):

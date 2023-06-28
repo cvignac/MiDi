@@ -38,7 +38,7 @@ def visualize(path: str, molecules: list, num_molecules_to_visualize: int, log='
             pos = mol.positions.cpu().numpy()
             if mol.positions.shape[0] > 2:
                 pos = pca.fit_transform(pos)
-            mol.positions = torch.from_numpy(pos).to(mol.atom_types)
+            mol.positions = torch.from_numpy(pos).to(mol.atom_types.device)
         file_path = os.path.join(path, f'{file_prefix}{i}.png')
         plot_save_molecule(molecules[i], save_path=file_path, conformer2d=conformer2d)
         all_file_paths.append(file_path)

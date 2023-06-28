@@ -132,7 +132,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
                     "val/X_kl": metrics[1]['XKl'] * self.T,
                     "val/E_kl": metrics[1]['EKl'] * self.T,
                     "val/charges_kl": metrics[1]['ChargesKl'] * self.T}
-        self.log_dict(log_dict, on_epoch=True, on_step=False)
+        self.log_dict(log_dict, on_epoch=True, on_step=False, sync_dist=True)
         if wandb.run:
             wandb.log(log_dict)
 
@@ -145,7 +145,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
         # Log val nll with default Lightning logger, so it can be monitored by checkpoint callback
         val_nll = metrics[0]
-        self.log("val/epoch_NLL", val_nll)
+        self.log("val/epoch_NLL", val_nll, sync_dist=True)
 
         if val_nll < self.best_val_nll:
             self.best_val_nll = val_nll
@@ -155,7 +155,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
         self.val_counter += 1
         if self.name == "debug" or (self.val_counter % self.cfg.general.sample_every_val == 0 and
                                     self.current_epoch > 0):
-            print(f"Sampling start on GR{self.global_rank}")
+            self.print(f"Sampling start")
             start = time.time()
             gen = self.cfg.general
             samples = self.sample_n_graphs(samples_to_generate=math.ceil(gen.samples_to_generate / max(gen.gpus, 1)),
@@ -165,7 +165,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
             print(f'Done on {self.local_rank}. Sampling took {time.time() - start:.2f} seconds\n')
             print(f"Computing sampling metrics on {self.local_rank}...")
             self.val_sampling_metrics(samples, self.name, self.current_epoch, self.local_rank)
-        print(f"Val epoch end on {self.global_rank}")
+        self.print(f"Val epoch {self.current_epoch} ends")
 
     def on_test_epoch_start(self):
         if self.local_rank == 0:
@@ -181,7 +181,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
         nll, log_dict = self.compute_val_loss(pred, z_t, clean_data=dense_data, test=True)
         return {'loss': nll}, log_dict
 
-    def test_epoch_end(self, outs) -> None:
+    def on_test_epoch_end(self) -> None:
         """ Measure likelihood on a test set and compute stability metrics. """
         metrics = [self.test_nll.compute(), self.test_metrics.compute()]
         test_nll = metrics[0]
@@ -191,7 +191,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
                     "test/X_kl": metrics[1]['XKl'] * self.T,
                     "test/E_kl": metrics[1]['EKl'] * self.T,
                     "test/charges_kl": metrics[1]['ChargesKl'] * self.T}
-        self.log_dict(log_dict)
+        self.log_dict(log_dict, sync_dist=True)
 
         print_str = []
         for key, val in log_dict.items():
@@ -436,7 +436,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
 
         # Visualize chains
         if keep_chain > 0:
-            print('Batch sampled. Visualizing chains starts!')
+            self.print('Batch sampled. Visualizing chains starts!')
             chains_path = os.path.join(os.getcwd(), f'chains/epoch{self.current_epoch}/',
                                        f'batch{batch_id}_GR{self.global_rank}')
             os.makedirs(chains_path, exist_ok=True)
@@ -446,13 +446,13 @@ class FullDenoisingDiffusion(pl.LightningModule):
                                         atom_decoder=self.dataset_infos.atom_decoder)
 
         if save_final > 0:
-            print(f'Visualizing {save_final} individual molecules...')
+            self.print(f'Visualizing {save_final} individual molecules...')
 
         # Visualize the final molecules
         current_path = os.getcwd()
         result_path = os.path.join(current_path, f'graphs/epoch{self.current_epoch}_b{batch_id}/')
         _ = visualizer.visualize(result_path, molecule_list, num_molecules_to_visualize=save_final)
-        print("Done.")
+        self.print("Visualizing done.")
         return molecule_list
 
     def sample_zs_from_zt(self, z_t, s_int):
@@ -535,16 +535,23 @@ class FullDenoisingDiffusion(pl.LightningModule):
         return self.model(model_input)
 
     def on_train_epoch_end(self) -> None:
-        print("Calling train epoch end on local rank ", self.local_rank)
-        tle_log = self.train_loss.log_epoch_metrics(self.current_epoch, self.start_epoch_time, self.local_rank)
+        self.print(f"Train epoch {self.current_epoch} ends")
+        tle_log = self.train_loss.log_epoch_metrics()
+        self.print(f"Epoch {self.current_epoch} finished: pos: {tle_log['train_epoch/pos_mse'] :.2f} -- "
+                   f"X: {tle_log['train_epoch/x_CE'] :.2f} --"
+                   f" charges: {tle_log['train_epoch/charges_CE']:.2f} --"
+                   f" E: {tle_log['train_epoch/E_CE'] :.2f} --"
+                   f" y: {tle_log['train_epoch/y_CE'] :.2f} -- {time.time() - self.start_epoch_time:.1f}s ")
         self.log_dict(tle_log, batch_size=self.BS)
         # if self.local_rank == 0:
         tme_log = self.train_metrics.log_epoch_metrics(self.current_epoch, self.local_rank)
         if tme_log is not None:
             self.log_dict(tme_log, batch_size=self.BS)
+        if wandb.run:
+            wandb.log({"epoch": self.current_epoch}, commit=False)
 
     def on_train_epoch_start(self) -> None:
-        print("Starting epoch on local rank", self.local_rank)
+        self.print("Starting epoch", self.current_epoch)
         self.start_epoch_time = time.time()
         self.train_loss.reset()
         self.train_metrics.reset()

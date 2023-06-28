@@ -27,11 +27,11 @@ class XEyTransformerLayer(nn.Module):
     """
     def __init__(self, dx: int, de: int, dy: int, n_head: int, dim_ffX: int = 2048,
                  dim_ffE: int = 128, dim_ffy: int = 2048, dropout: float = 0.1,
-                 layer_norm_eps: float = 1e-5, device=None, dtype=None) -> None:
+                 layer_norm_eps: float = 1e-5, device=None, dtype=None, last_layer=False) -> None:
         kw = {'device': device, 'dtype': dtype}
         super().__init__()
 
-        self.self_attn = NodeEdgeBlock(dx, de, dy, n_head)
+        self.self_attn = NodeEdgeBlock(dx, de, dy, n_head, last_layer=last_layer)
 
         self.linX1 = Linear(dx, dim_ffX, **kw)
         self.linX2 = Linear(dim_ffX, dx, **kw)
@@ -55,13 +55,15 @@ class XEyTransformerLayer(nn.Module):
         self.dropoutE2 = Dropout(dropout)
         self.dropoutE3 = Dropout(dropout)
 
-        self.lin_y1 = Linear(dy, dim_ffy, **kw)
-        self.lin_y2 = Linear(dim_ffy, dy, **kw)
-        self.norm_y1 = LayerNorm(dy, eps=layer_norm_eps, **kw)
-        self.norm_y2 = LayerNorm(dy, eps=layer_norm_eps, **kw)
-        self.dropout_y1 = Dropout(dropout)
-        self.dropout_y2 = Dropout(dropout)
-        self.dropout_y3 = Dropout(dropout)
+        self.last_layer = last_layer
+        if not last_layer:
+            self.lin_y1 = Linear(dy, dim_ffy, **kw)
+            self.lin_y2 = Linear(dim_ffy, dy, **kw)
+            self.norm_y1 = LayerNorm(dy, eps=layer_norm_eps, **kw)
+            self.norm_y2 = LayerNorm(dy, eps=layer_norm_eps, **kw)
+            self.dropout_y1 = Dropout(dropout)
+            self.dropout_y2 = Dropout(dropout)
+            self.dropout_y3 = Dropout(dropout)
 
         self.activation = F.relu
 
@@ -95,8 +97,9 @@ class XEyTransformerLayer(nn.Module):
         # E = self.normE1(E + newE_d, e_mask1, e_mask2)
         E = self.normE1(E + newE_d)
 
-        new_y_d = self.dropout_y1(new_y)
-        y = self.norm_y1(y + new_y_d)
+        if not self.last_layer:
+            new_y_d = self.dropout_y1(new_y)
+            y = self.norm_y1(y + new_y_d)
 
         ff_outputX = self.linX2(self.dropoutX2(self.activation(self.linX1(X))))
         ff_outputX = self.dropoutX3(ff_outputX)
@@ -109,9 +112,10 @@ class XEyTransformerLayer(nn.Module):
         E = self.normE2(E + ff_outputE)
         E = 0.5 * (E + torch.transpose(E, 1, 2))
 
-        ff_output_y = self.lin_y2(self.dropout_y2(self.activation(self.lin_y1(y))))
-        ff_output_y = self.dropout_y3(ff_output_y)
-        y = self.norm_y2(y + ff_output_y)
+        if not self.last_layer:
+            ff_output_y = self.lin_y2(self.dropout_y2(self.activation(self.lin_y1(y))))
+            ff_output_y = self.dropout_y3(ff_output_y)
+            y = self.norm_y2(y + ff_output_y)
 
         out = utils.PlaceHolder(X=X, E=E, y=y, pos=new_pos, charges=None, node_mask=node_mask).mask()
 
@@ -120,7 +124,7 @@ class XEyTransformerLayer(nn.Module):
 
 class NodeEdgeBlock(nn.Module):
     """ Self attention layer that also updates the representations on the edges. """
-    def __init__(self, dx, de, dy, n_head):
+    def __init__(self, dx, de, dy, n_head, last_layer=False):
         super().__init__()
         assert dx % n_head == 0, f"dx: {dx} -- nhead: {n_head}"
         self.dx = dx
@@ -167,17 +171,19 @@ class NodeEdgeBlock(nn.Module):
         self.y_e_mul = Linear(dy, de)           # Warning: here it's dx and not de
         self.y_e_add = Linear(dy, de)
 
-        self.pre_softmax = Linear(de, dx)
+        self.pre_softmax = Linear(de, dx)       # Unused, but needed to load old checkpoints
 
         # FiLM y to X
         self.y_x_mul = Linear(dy, dx)
         self.y_x_add = Linear(dy, dx)
 
         # Process y
-        self.y_y = Linear(dy, dy)
-        self.x_y = Xtoy(dx, dy)
-        self.e_y = Etoy(de, dy)
-        self.dist_y = Etoy(de, dy)
+        self.last_layer = last_layer
+        if not last_layer:
+            self.y_y = Linear(dy, dy)
+            self.x_y = Xtoy(dx, dy)
+            self.e_y = Etoy(de, dy)
+            self.dist_y = Etoy(de, dy)
 
         # Process_pos
         self.e_pos1 = Linear(de, de, bias=False)
@@ -186,7 +192,8 @@ class NodeEdgeBlock(nn.Module):
         # Output layers
         self.x_out = Linear(dx, dx)
         self.e_out = Linear(de, de)
-        self.y_out = nn.Sequential(nn.Linear(dy, dy), nn.ReLU(), nn.Linear(dy, dy))
+        if not last_layer:
+            self.y_out = nn.Sequential(nn.Linear(dy, dy), nn.ReLU(), nn.Linear(dy, dy))
 
     def forward(self, X, E, y, pos, node_mask):
         """ :param X: bs, n, d        node features
@@ -276,12 +283,15 @@ class NodeEdgeBlock(nn.Module):
         diffusion_utils.assert_correctly_masked(Xout, x_mask)
 
         # Process y based on X and E
-        y = self.y_y(y)
-        e_y = self.e_y(Y, e_mask1, e_mask2)
-        x_y = self.x_y(newX, x_mask)
-        dist_y = self.dist_y(dist1, e_mask1, e_mask2)
-        new_y = y + x_y + e_y + dist_y
-        y_out = self.y_out(new_y)               # bs, dy
+        if self.last_layer:
+            y_out = None
+        else:
+            y = self.y_y(y)
+            e_y = self.e_y(Y, e_mask1, e_mask2)
+            x_y = self.x_y(newX, x_mask)
+            dist_y = self.dist_y(dist1, e_mask1, e_mask2)
+            new_y = y + x_y + e_y + dist_y
+            y_out = self.y_out(new_y)               # bs, dy
 
         # Update the positions
         pos1 = pos.unsqueeze(1).expand(-1, n, -1, -1)              # bs, 1, n, 3
@@ -325,7 +335,9 @@ class GraphTransformer(nn.Module):
                                                             dy=hidden_dims['dy'],
                                                             n_head=hidden_dims['n_head'],
                                                             dim_ffX=hidden_dims['dim_ffX'],
-                                                            dim_ffE=hidden_dims['dim_ffE'])
+                                                            dim_ffE=hidden_dims['dim_ffE'],
+                                                            last_layer=False)     # needed to load old checkpoints
+                                                            # last_layer=(i == n_layers - 1))
                                         for i in range(n_layers)])
 
         self.mlp_out_X = nn.Sequential(nn.Linear(hidden_dims['dx'], hidden_mlp_dims['X']), act_fn_out,

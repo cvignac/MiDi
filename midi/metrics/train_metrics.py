@@ -72,7 +72,7 @@ class TrainLoss(nn.Module):
         for metric in [self.train_pos_mse, self.node_loss, self.charges_loss, self.edge_loss, self.y_loss]:
             metric.reset()
 
-    def log_epoch_metrics(self, current_epoch, start_epoch_time, local_rank):
+    def log_epoch_metrics(self):
         epoch_pos_loss = self.train_pos_mse.compute().item() if self.train_pos_mse.total > 0 else -1.0
         epoch_node_loss = self.node_loss.compute().item() if self.node_loss.total_samples > 0 else -1.0
         epoch_charges_loss = self.charges_loss.compute().item() if self.charges_loss > 0 else -1.0
@@ -84,11 +84,6 @@ class TrainLoss(nn.Module):
                   "train_epoch/charges_CE": epoch_charges_loss,
                   "train_epoch/E_CE": epoch_edge_loss,
                   "train_epoch/y_CE": epoch_y_loss}
-
-        print(f"Epoch {current_epoch} finished on rank {local_rank}: pos: {epoch_pos_loss :.2f} -- "
-              f"X: {epoch_node_loss :.2f} --"
-              f" charges: {epoch_charges_loss :.2f} --"
-              f" E: {epoch_edge_loss :.2f} -- y: {epoch_y_loss :.2f} -- {time.time() - start_epoch_time:.1f}s ")
         if wandb.run:
             wandb.log(to_log, commit=False)
         return to_log

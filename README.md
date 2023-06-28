@@ -5,7 +5,7 @@ Clément Vignac*, Nagham Osman*, Laura Toni, Pascal Frossard
 ECML 2023
 ## Installation
 
-This code was tested with PyTorch 2.0.1, cuda 11.8 and torch_geometric 2.3.1
+This code was tested with PyTorch 2.0.1, cuda 11.8 and torch_geometric 2.3.1 on multiple gpus.
 
   - Download anaconda/miniconda if needed
   - Create a rdkit environment that directly contains rdkit:

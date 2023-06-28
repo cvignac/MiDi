@@ -87,9 +87,9 @@ def main(cfg: omegaconf.DictConfig):
 
 
     trainer = Trainer(gradient_clip_val=cfg.train.clip_grad,
-                      strategy="ddp",
+                      strategy="ddp_find_unused_parameters_true",  # Needed to load old checkpoints
                       accelerator='gpu' if use_gpu else 'cpu',
-                      devices=cfg.general.gpus if torch.cuda.is_available() else 0,
+                      devices=cfg.general.gpus if use_gpu else 1,
                       max_epochs=cfg.train.n_epochs,
                       check_val_every_n_epoch=cfg.general.check_val_every_n_epochs,
                       fast_dev_run=cfg.general.name == 'debug',

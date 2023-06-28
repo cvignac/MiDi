@@ -3,7 +3,8 @@ general:
     name : 'h_ada_sampling'
     gpus : 1
     wandb: 'online'
-    test_only: null
+    resume: null
+
     num_final_sampling: 5
     final_model_samples_to_generate: 10000
     final_model_samples_to_save: 10
@@ -25,4 +26,9 @@ model:
     extra_features: null
 
 dataset:
+    name: 'qm9'            # qm9, qm9_positional
+    datadir: 'data/qm9/qm9_pyg/'
+    random_subset: null
+    pin_memory: False
+    adaptive_loader: False
     remove_h: False
