@@ -550,7 +550,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
         self.train_metrics.reset()
 
     def on_fit_start(self) -> None:
-        self.train_iterations = len(self.trainer.datamodule.train_dataloader())
+        self.train_iterations = 100      # TODO: fix -- previously was len(self.trainer.datamodule.train_dataloader())
         if self.local_rank == 0:
             utils.setup_wandb(self.cfg)
 
