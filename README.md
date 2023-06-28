@@ -1,8 +1,8 @@
 # MiDi: Mixed Graph and 3D Denoising Diffusion for Molecule Generation
 
-Clément Vignac, Nagham Osman, Laura Toni, Pascal Frossard
+Clément Vignac*, Nagham Osman*, Laura Toni, Pascal Frossard
 
-
+ECML 2023
 ## Installation
 
 This code was tested with PyTorch 2.0.1, cuda 11.8 and torch_geometric 2.3.1
@@ -72,15 +72,6 @@ Run:
 
 ``` python3 main.py dataset=qm0 dataset.remove_h=True +experiment=qm9_no_h general.test_only='ABS_PATH' ```
 
-
-## Multi-gpu training
-
-Ray-lightning is currently not very well maintained, and multi-gpu training might fail. If you get a multi-gpu id error,
-replace the file is which the error is raised by the content of `ddp_strategy.py` at the root of this folder
-
-For me, this file was: `/home/vignac/.conda/envs/moldiffusion/lib/python3.9/site-packages/ray_lightning/ray_ddp.py`
-
-We will try to remove this dependency in the coming weeks.
 
 ## Checkpoints
 

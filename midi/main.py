@@ -1,10 +1,6 @@
 # Do not move these imports, the order seems to matter
-from rdkit import Chem
 import torch
-import torch_geometric
 import pytorch_lightning as pl
-from ray.air.config import ScalingConfig
-from ray.train.lightning import LightningTrainer, LightningConfigBuilder
 
 import os
 import warnings
@@ -80,87 +76,48 @@ def main(cfg: omegaconf.DictConfig):
         callbacks.append(checkpoint_callback)
         callbacks.append(last_ckpt_save)
 
-    # if cfg.train.ema_decay > 0:
-    #     ema_callback = utils.EMA(decay=cfg.train.ema_decay)
-    #     callbacks.append(ema_callback)
-
     use_gpu = cfg.general.gpus > 0 and torch.cuda.is_available()
 
-    lightning_config = (
-        LightningConfigBuilder()
-            .module(cls=FullDenoisingDiffusion, cfg=cfg, dataset_infos=dataset_infos, train_smiles=train_smiles)
-            .trainer(max_epochs=cfg.train.n_epochs,
-                     accelerator="gpu" if use_gpu else "cpu")
-            .fit_params(train_dataloaders=datamodule.train_dataloader(),
-                        val_dataloaders=datamodule.val_dataloader())
-            .build()
-    )
+    LIMITED = 5
+    name = cfg.general.name
+    if name == 'test':
+        print(f"[WARNING]: Run is called 'test' -- it will run in debug mode on {LIMITED} batches. ")
+    elif name == 'debug':
+        print("[WARNING]: Run is called 'debug' -- it will run with fast_dev_run. ")
 
-    scaling_config = ScalingConfig(
-        num_workers=cfg.general.cpus if use_gpu else 1, use_gpu=use_gpu, resources_per_worker={"CPU": 4})
-    trainer = LightningTrainer(
-        lightning_config=lightning_config,
-        scaling_config=scaling_config,
-    )
-    result = trainer.fit()
-    result
 
-#     if cfg.general.gpus > 1 or cfg.general.force_ray:
-#         ddp_kwargs = {}
-#         strategy = RayStrategy(num_workers=cfg.general.gpus,
-#                                resources_per_worker={
-#                                     "CPU": cfg.general.cpus_per_gpu,     #4 default,
-#                                     "GPU": 1                             # 1 GPU per Ray process
-#                                     },
-#                                use_gpu=True, **ddp_kwargs)
-#     else:
-#         strategy = None
-#
-#     LIMITED = 5
-#     name = cfg.general.name
-#     if name == 'test':
-#         print(f"[WARNING]: Run is called 'test' -- it will run in debug mode on {LIMITED} batches. ")
-#     elif name == 'debug':
-#         print("[WARNING]: Run is called 'debug' -- it will run with fast_dev_run. ")
-#
-#     effective_gpus = None if (not torch.cuda.is_available()) or isinstance(strategy,
-#                                                                            RayStrategy) else cfg.general.gpus
-#     print(f"[INFO]  Output Dims: {dataset_infos.output_dims} -- Strategy {strategy}- gpus {effective_gpus}")
-#
-#     gp = 'gpu' if cfg.general.gpus == 1 else None
-#
-#     trainer = Trainer(gradient_clip_val=cfg.train.clip_grad,
-#                       gpus=effective_gpus, # strategy is set <=> don't set gpus
-#                       strategy=strategy,
-#                       accelerator=gp if torch.cuda.is_available() and cfg.general.gpus > 0 else 'cpu',
-#                       max_epochs=cfg.train.n_epochs,
-#                       check_val_every_n_epoch=cfg.general.check_val_every_n_epochs,
-#                       fast_dev_run=cfg.general.name == 'debug',
-#                       enable_progress_bar=cfg.train.progress_bar,
-#                       callbacks=callbacks,
-#                       log_every_n_steps=50 if name not in {"test", "debug"} else 1,
-#                       )
-#
-#     if not cfg.general.test_only:
-#         trainer.fit(model, datamodule=datamodule, ckpt_path=cfg.general.resume)
-#         # if cfg.general.name not in ['debug', 'test']:
-#         #     trainer.test(model, datamodule=datamodule)
-#     else:
-#         # Start by evaluating test_only_path
-#         for i in range(cfg.general.num_final_sampling):
-#             trainer.test(model, datamodule=datamodule, ckpt_path=cfg.general.test_only)
-#         if cfg.general.evaluate_all_checkpoints:
-#             directory = pathlib.Path(cfg.general.test_only).parents[0]
-#             print("Directory:", directory)
-#             files_list = os.listdir(directory)
-#             for file in files_list:
-#                 if '.ckpt' in file:
-#                     ckpt_path = os.path.join(directory, file)
-#                     if ckpt_path == cfg.general.test_only:
-#                         continue
-#                     print("Loading checkpoint", ckpt_path)
-#                     trainer.test(model, datamodule=datamodule, ckpt_path=ckpt_path)
-#
-#
+    trainer = Trainer(gradient_clip_val=cfg.train.clip_grad,
+                      strategy="ddp",
+                      accelerator='gpu' if use_gpu else 'cpu',
+                      devices=cfg.general.gpus if torch.cuda.is_available() else 0,
+                      max_epochs=cfg.train.n_epochs,
+                      check_val_every_n_epoch=cfg.general.check_val_every_n_epochs,
+                      fast_dev_run=cfg.general.name == 'debug',
+                      enable_progress_bar=cfg.train.progress_bar,
+                      callbacks=callbacks,
+                      log_every_n_steps=50 if name not in {"test", "debug"} else 1,
+                      )
+
+    if not cfg.general.test_only:
+        trainer.fit(model, datamodule=datamodule, ckpt_path=cfg.general.resume)
+        # if cfg.general.name not in ['debug', 'test']:
+        #     trainer.test(model, datamodule=datamodule)
+    else:
+        # Start by evaluating test_only_path
+        for i in range(cfg.general.num_final_sampling):
+            trainer.test(model, datamodule=datamodule, ckpt_path=cfg.general.test_only)
+        if cfg.general.evaluate_all_checkpoints:
+            directory = pathlib.Path(cfg.general.test_only).parents[0]
+            print("Directory:", directory)
+            files_list = os.listdir(directory)
+            for file in files_list:
+                if '.ckpt' in file:
+                    ckpt_path = os.path.join(directory, file)
+                    if ckpt_path == cfg.general.test_only:
+                        continue
+                    print("Loading checkpoint", ckpt_path)
+                    trainer.test(model, datamodule=datamodule, ckpt_path=ckpt_path)
+
+
 if __name__ == '__main__':
     main()

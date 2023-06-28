@@ -125,7 +125,7 @@ class FullDenoisingDiffusion(pl.LightningModule):
         nll, log_dict = self.compute_val_loss(pred, z_t, clean_data=dense_data, test=False)
         return {'loss': nll}, log_dict
 
-    def validation_epoch_end(self, outs) -> None:
+    def on_validation_epoch_end(self) -> None:
         metrics = [self.val_nll.compute(), self.val_metrics.compute()]
         log_dict = {"val/epoch_NLL": metrics[0],
                     "val/pos_mse": metrics[1]['PosMSE'] * self.T,
