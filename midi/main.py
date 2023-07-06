@@ -28,6 +28,7 @@ def get_resume(cfg, dataset_infos, train_smiles, checkpoint_path, test: bool):
     cfg.general.name = name
     return cfg, model
 
+
 @hydra.main(version_base='1.3', config_path='../configs', config_name='config')
 def main(cfg: omegaconf.DictConfig):
     dataset_config = cfg.dataset
@@ -78,13 +79,9 @@ def main(cfg: omegaconf.DictConfig):
 
     use_gpu = cfg.general.gpus > 0 and torch.cuda.is_available()
 
-    LIMITED = 5
     name = cfg.general.name
-    if name == 'test':
-        print(f"[WARNING]: Run is called 'test' -- it will run in debug mode on {LIMITED} batches. ")
-    elif name == 'debug':
+    if name == 'debug':
         print("[WARNING]: Run is called 'debug' -- it will run with fast_dev_run. ")
-
 
     trainer = Trainer(gradient_clip_val=cfg.train.clip_grad,
                       strategy="ddp_find_unused_parameters_true",  # Needed to load old checkpoints
@@ -95,7 +92,7 @@ def main(cfg: omegaconf.DictConfig):
                       fast_dev_run=cfg.general.name == 'debug',
                       enable_progress_bar=cfg.train.progress_bar,
                       callbacks=callbacks,
-                      log_every_n_steps=50 if name not in {"test", "debug"} else 1,
+                      log_every_n_steps=50 if name != 'debug' else 1,
                       )
 
     if not cfg.general.test_only:

@@ -199,7 +199,6 @@ class QM9DataModule(AbstractDataModule):
 class QM9infos(AbstractDatasetInfos):
     def __init__(self, datamodule, cfg):
         self.remove_h = cfg.dataset.remove_h
-        self.need_to_strip = False        # to indicate whether we need to ignore one output from the model
         self.statistics = datamodule.statistics
         self.name = 'qm9'
         self.atom_encoder = full_atom_encoder

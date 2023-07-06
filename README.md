@@ -88,10 +88,12 @@ Geom implicit H:
   - checkpoint: https://drive.switch.ch/index.php/s/ZcMWIJMVlLsBGYS
 
 Geom explicit H:
-  - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_uniform`
-  - checkpoint: https://drive.switch.ch/index.php/s/SSmqhqN6zHIComa
-
-
+  - Uniform:
+      - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_uniform`
+      - checkpoint: https://drive.switch.ch/index.php/s/SSmqhqN6zHIComa
+  - Adaptive:
+      - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_adaptive`
+      - checkpoint: https://drive.switch.ch/index.php/s/aBIeJbvXRgcp3xm
 
 ## Generated samples
 
@@ -104,8 +106,8 @@ QM9 explicit H:
   - Smiles: https://drive.switch.ch/index.php/s/OrhJb3s0rYlYUrS
 
 Geom with explicit H:
-  - Full graphs: TODO
-  - Smiles: https://drive.switch.ch/index.php/s/023FzABjVDeAgO2
+  - Full graphs: https://drive.switch.ch/index.php/s/rzidWbKSz1qzfEu
+  - Smiles: https://drive.switch.ch/index.php/s/TFx1D7OncQ5xAZq
 
 
 
