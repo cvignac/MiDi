@@ -90,10 +90,10 @@ Geom implicit H:
 Geom explicit H:
   - Uniform:
       - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_uniform`
-      - checkpoint: https://drive.switch.ch/index.php/s/SSmqhqN6zHIComa
+      - checkpoint: https://drive.google.com/file/d/1tVhB5taWWLc0hUJ9-jYhYgsO2ceY_fvg/view?usp=drive_link
   - Adaptive:
       - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_adaptive`
-      - checkpoint: https://drive.switch.ch/index.php/s/aBIeJbvXRgcp3xm
+      - checkpoint: https://drive.google.com/file/d/1ExNpU7czGwhPWjpYCcz0mHGxLo8LvQ0b/view?usp=drive_link
 
 ## Generated samples
 
