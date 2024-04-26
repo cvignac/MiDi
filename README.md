@@ -1,5 +1,7 @@
 # MiDi: Mixed Graph and 3D Denoising Diffusion for Molecule Generation
 
+[Link to the paper](https://arxiv.org/abs/2302.09048)
+
 Clément Vignac*, Nagham Osman*, Laura Toni, Pascal Frossard
 
 ECML 2023
