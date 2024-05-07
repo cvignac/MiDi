@@ -49,11 +49,11 @@ Some examples:
 
 QM9 without hydrogens on cpu
 
-``` python3 main.py dataset=qm0 dataset.remove_h=True +experiment=qm9_no_h```
+``` python3 main.py dataset=qm9 dataset.remove_h=True +experiment=qm9_no_h_uniform```
 
 GEOM-DRUGS with hydrogens on 2 gpus
 
-``` python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h general.gpus=2```
+``` python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_uniform general.gpus=2```
 
 
 ## Resuming a previous run
@@ -63,7 +63,7 @@ ABS_PATH=`/home/vignac/MiDi/outputs/2023-02-13/18-10-49-geomH/checkpoints/geomH_
 
 Then run:
 
-``` python3 main.py dataset=qm0 dataset.remove_h=True +experiment=qm9_no_h general.resume='ABS_PATH' ```
+``` python3 main.py dataset=qm9 dataset.remove_h=True +experiment=qm9_no_h_uniform general.resume='ABS_PATH' ```
 
 
 ## Evaluation
@@ -72,7 +72,7 @@ Sampling on multiple gpu is not really handled, we recommand sampling on a singl
 
 Run:
 
-``` python3 main.py dataset=qm0 dataset.remove_h=True +experiment=qm9_no_h general.test_only='ABS_PATH' ```
+``` python3 main.py dataset=qm9 dataset.remove_h=True +experiment=qm9_no_h_uniform general.test_only='ABS_PATH' ```
 
 
 ## Checkpoints
@@ -86,7 +86,7 @@ QM9 explicit H:
   - checkpoint: https://drive.switch.ch/index.php/s/rLOnLVdKdonUrs6
 
 Geom implicit H:
-  - command: `python3 main.py dataset=geom dataset.remove_h=True +experiment=geom_with_h`
+  - command: `python3 main.py dataset=geom dataset.remove_h=True +experiment=geom_no_h_uniform`
   - checkpoint: https://drive.switch.ch/index.php/s/ZcMWIJMVlLsBGYS
 
 Geom explicit H:
