@@ -1,6 +1,6 @@
 # MiDi: Mixed Graph and 3D Denoising Diffusion for Molecule Generation
 
-Update (July 2024): Most links are currently broken as the drive account where they were stored was deleted. Sorry for the inconvenience.
+**Update (July 2024): My drive account has unfortunately been deleted, and I have lost access to the checkpoints. If you happen to have a downloaded checkpoint or dataset stored locally, I would be glad if you could send me an email at vignac.clement@gmail.com or raise a Github issue.**
 
 [Link to the paper](https://arxiv.org/abs/2302.09048)
 
@@ -39,9 +39,9 @@ This code was tested with PyTorch 2.0.1, cuda 11.8 and torch_geometric 2.3.1 on 
 
   - QM9 should download automatically
   - For GEOM, download the data and put in `MiDi/data/geom/raw/`:
-    - train: https://drive.switch.ch/index.php/s/UauSNgSMUPQdZ9v
-    - validation: https://drive.switch.ch/index.php/s/YNW5UriYEeVCDnL
-    - test: https://drive.switch.ch/index.php/s/GQW9ok7mPInPcIo
+    - train: ~~https://drive.switch.ch/index.php/s/UauSNgSMUPQdZ9v~~
+    - validation: ~~https://drive.switch.ch/index.php/s/YNW5UriYEeVCDnL~~
+    - test: ~~https://drive.switch.ch/index.php/s/GQW9ok7mPInPcIo~~
   
 ## Training:
 
@@ -85,33 +85,33 @@ QM9 implicit H:
 
 QM9 explicit H: 
   - command: `python3 main.py dataset=qm9 dataset.remove_h=False +experiment=qm9_with_h_adaptive`
-  - checkpoint: https://drive.switch.ch/index.php/s/rLOnLVdKdonUrs6
+  - checkpoint: ~~https://drive.switch.ch/index.php/s/rLOnLVdKdonUrs6~~
 
 Geom implicit H:
   - command: `python3 main.py dataset=geom dataset.remove_h=True +experiment=geom_no_h_uniform`
-  - checkpoint: https://drive.switch.ch/index.php/s/ZcMWIJMVlLsBGYS
+  - checkpoint: ~~https://drive.switch.ch/index.php/s/ZcMWIJMVlLsBGYS~~
 
 Geom explicit H:
   - Uniform:
       - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_uniform`
-      - checkpoint: https://drive.google.com/file/d/1tVhB5taWWLc0hUJ9-jYhYgsO2ceY_fvg/view?usp=drive_link
+      - checkpoint: ~~https://drive.google.com/file/d/1tVhB5taWWLc0hUJ9-jYhYgsO2ceY_fvg/view?usp=drive_link~~
   - Adaptive:
       - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_adaptive`
-      - checkpoint: https://drive.google.com/file/d/1ExNpU7czGwhPWjpYCcz0mHGxLo8LvQ0b/view?usp=drive_link
+      - checkpoint: ~~https://drive.google.com/file/d/1ExNpU7czGwhPWjpYCcz0mHGxLo8LvQ0b/view?usp=drive_link~~
 
 ## Generated samples
 
 QM9 implicit H:
-  - Full graphs: https://drive.switch.ch/index.php/s/dNFcouhBoqZfSjB
-  - Smiles: https://drive.switch.ch/index.php/s/qrqhtFqLqOI17zo
+  - Full graphs: ~~https://drive.switch.ch/index.php/s/dNFcouhBoqZfSjB~~
+  - Smiles: ~~https://drive.switch.ch/index.php/s/qrqhtFqLqOI17zo~~
 
 QM9 explicit H:
-  - Full graphs: https://drive.switch.ch/index.php/s/b3ffvPAw8CqgYym
-  - Smiles: https://drive.switch.ch/index.php/s/OrhJb3s0rYlYUrS
+  - Full graphs: ~~https://drive.switch.ch/index.php/s/b3ffvPAw8CqgYym~~
+  - Smiles: ~~https://drive.switch.ch/index.php/s/OrhJb3s0rYlYUrS~~
 
 Geom with explicit H:
-  - Full graphs: https://drive.switch.ch/index.php/s/rzidWbKSz1qzfEu
-  - Smiles: https://drive.switch.ch/index.php/s/TFx1D7OncQ5xAZq
+  - Full graphs: ~~https://drive.switch.ch/index.php/s/rzidWbKSz1qzfEu~~
+  - Smiles: ~~https://drive.switch.ch/index.php/s/TFx1D7OncQ5xAZq~~
 
 
 
