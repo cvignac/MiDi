@@ -85,7 +85,7 @@ QM9 implicit H:
 
 QM9 explicit H: 
   - command: `python3 main.py dataset=qm9 dataset.remove_h=False +experiment=qm9_with_h_adaptive`
-  - checkpoint: ~~https://drive.switch.ch/index.php/s/rLOnLVdKdonUrs6~~
+  - checkpoint: https://drive.google.com/file/d/1ij8e6Iz-JohCYcEuYVOw1J_GTtU7-JeO/view?usp=drive_link
 
 Geom implicit H:
   - command: `python3 main.py dataset=geom dataset.remove_h=True +experiment=geom_no_h_uniform`
@@ -97,7 +97,7 @@ Geom explicit H:
       - checkpoint: ~~https://drive.google.com/file/d/1tVhB5taWWLc0hUJ9-jYhYgsO2ceY_fvg/view?usp=drive_link~~
   - Adaptive:
       - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_adaptive`
-      - checkpoint: ~~https://drive.google.com/file/d/1ExNpU7czGwhPWjpYCcz0mHGxLo8LvQ0b/view?usp=drive_link~~
+      - checkpoint: https://drive.google.com/file/d/1lOZseprglsJqtqenl7F9T124otHLeZks/view?usp=drive_link
 
 ## Generated samples
 
