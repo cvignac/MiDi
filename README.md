@@ -39,9 +39,11 @@ This code was tested with PyTorch 2.0.1, cuda 11.8 and torch_geometric 2.3.1 on 
 
   - QM9 should download automatically
   - For GEOM, download the data and put in `MiDi/data/geom/raw/`:
-    - train: ~~https://drive.switch.ch/index.php/s/UauSNgSMUPQdZ9v~~
-    - validation: ~~https://drive.switch.ch/index.php/s/YNW5UriYEeVCDnL~~
-    - test: ~~https://drive.switch.ch/index.php/s/GQW9ok7mPInPcIo~~
+    - train: https://bits.csb.pitt.edu/files/geom_raw/train_data.pickle
+    - validation: https://bits.csb.pitt.edu/files/geom_raw/val_data.pickle
+    - test: https://bits.csb.pitt.edu/files/geom_raw/test_data.pickle
+
+Thanks to Ian Dunn for the new links to the data!
   
 ## Training:
 
