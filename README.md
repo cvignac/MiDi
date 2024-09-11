@@ -1,6 +1,6 @@
 # MiDi: Mixed Graph and 3D Denoising Diffusion for Molecule Generation
 
-**Update (July 2024): My drive account has unfortunately been deleted, and I have lost access to the checkpoints. If you happen to have a downloaded checkpoint or dataset stored locally, I would be glad if you could send me an email at vignac.clement@gmail.com or raise a Github issue.**
+**Update (July 2024): My drive account has unfortunately been deleted, and I have lost access some checkpoints. If you happen to have a downloaded checkpoint stored locally, I would be glad if you could send me an email at vignac.clement@gmail.com or raise a Github issue.**
 
 [Link to the paper](https://arxiv.org/abs/2302.09048)
 
