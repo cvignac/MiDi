@@ -87,19 +87,18 @@ QM9 implicit H:
 
 QM9 explicit H: 
   - command: `python3 main.py dataset=qm9 dataset.remove_h=False +experiment=qm9_with_h_adaptive`
-  - checkpoint: https://drive.google.com/file/d/1ij8e6Iz-JohCYcEuYVOw1J_GTtU7-JeO/view?usp=drive_link
-
+  - checkpoint: https://drive.google.com/file/d/1ij8e6Iz-JohCYcEuYVOw1J_GTtU7-JeO/view?usp=sharing
 Geom implicit H:
   - command: `python3 main.py dataset=geom dataset.remove_h=True +experiment=geom_no_h_uniform`
-  - checkpoint: ~~https://drive.switch.ch/index.php/s/ZcMWIJMVlLsBGYS~~
+  - checkpoint: https://drive.google.com/file/d/13FCl8UE5sD_8fMkHLBAQNby0ZRtXa2QY/view?usp=sharing
 
 Geom explicit H:
   - Uniform:
       - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_uniform`
-      - checkpoint: ~~https://drive.google.com/file/d/1tVhB5taWWLc0hUJ9-jYhYgsO2ceY_fvg/view?usp=drive_link~~
+      - checkpoint: https://drive.google.com/file/d/1oDL43KwX2JreJd7ib7QP71bXRpIePUF3/view?usp=sharing
   - Adaptive:
       - command: `python3 main.py dataset=geom dataset.remove_h=False +experiment=geom_with_h_adaptive`
-      - checkpoint: https://drive.google.com/file/d/1lOZseprglsJqtqenl7F9T124otHLeZks/view?usp=drive_link
+      - checkpoint: https://drive.google.com/file/d/1lOZseprglsJqtqenl7F9T124otHLeZks/view?usp=sharing
 
 ## Generated samples
 
